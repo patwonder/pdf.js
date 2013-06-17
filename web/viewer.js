@@ -2008,6 +2008,8 @@ var PageView = function pageView(container, id, scale,
 
   this.textContent = null;
   this.textLayer = null;
+  
+  this.bbLayer = null;
 
   var anchor = document.createElement('a');
   anchor.name = '' + this.id;
@@ -2300,6 +2302,15 @@ var PageView = function pageView(container, id, scale,
     var textLayer = this.textLayer =
           textLayerDiv ? new TextLayerBuilder(textLayerDiv, this.id - 1) : null;
 
+    var bbLayerDiv = document.createElement('div');
+    bbLayerDiv.className = 'bbLayer';
+    bbLayerDiv.style.width = canvas.width + 'px';
+    bbLayerDiv.style.height = canvas.height + 'px';
+    div.appendChild(bbLayerDiv);
+    
+    var bbLayer = this.bbLayer =
+          bbLayerDiv ? new BoundingBoxLayerBuilder(bbLayerDiv, this.id - 1) : null;
+
     if (outputScale.scaled) {
       var cssScale = 'scale(' + (1 / outputScale.sx) + ', ' +
                                 (1 / outputScale.sy) + ')';
@@ -2379,6 +2390,7 @@ var PageView = function pageView(container, id, scale,
       canvasContext: ctx,
       viewport: this.viewport,
       textLayer: textLayer,
+      bbLayer: bbLayer,
       continueCallback: function pdfViewcContinueCallback(cont) {
         if (self.renderingState === RenderingStates.INITIAL) {
           // The page update() was called, we just need to abort any rendering.

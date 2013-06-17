@@ -214,7 +214,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
   // before it stops and shedules a continue of execution.
   var EXECUTION_TIME = 15;
 
-  function CanvasGraphics(canvasCtx, commonObjs, objs, textLayer, imageLayer) {
+  function CanvasGraphics(canvasCtx, commonObjs, objs, textLayer, bbLayer, imageLayer) {
     this.ctx = canvasCtx;
     this.current = new CanvasExtraState();
     this.stateStack = [];
@@ -224,6 +224,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     this.commonObjs = commonObjs;
     this.objs = objs;
     this.textLayer = textLayer;
+    this.bbLayer = bbLayer;
     this.imageLayer = imageLayer;
     this.groupStack = [];
     if (canvasCtx) {
@@ -440,6 +441,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (this.textLayer) {
         this.textLayer.beginLayout();
       }
+      if (this.bbLayer) {
+        this.bbLayer.beginLayout();
+      }
       if (this.imageLayer) {
         this.imageLayer.beginLayout();
       }
@@ -521,6 +525,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
       if (this.textLayer) {
         this.textLayer.endLayout();
+      }
+      if (this.bbLayer) {
+        this.bbLayer.endLayout();
       }
       if (this.imageLayer) {
         this.imageLayer.endLayout();
