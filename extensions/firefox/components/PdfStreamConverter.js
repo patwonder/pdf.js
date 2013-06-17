@@ -198,28 +198,7 @@ function ChromeActions(domWindow, contentDispositionFilename) {
 
 ChromeActions.prototype = {
   isInPrivateBrowsing: function() {
-    var docIsPrivate, privateBrowsing;
-    try {
-      docIsPrivate = PrivateBrowsingUtils.isWindowPrivate(this.domWindow);
-    } catch (x) {
-      // unable to use PrivateBrowsingUtils, e.g. FF15
-    }
-    if (typeof docIsPrivate === 'undefined') {
-      // per-window Private Browsing is not supported, trying global service
-      try {
-        privateBrowsing = Cc['@mozilla.org/privatebrowsing;1']
-                            .getService(Ci.nsIPrivateBrowsingService);
-        docIsPrivate = privateBrowsing.privateBrowsingEnabled;
-      } catch (x) {
-        // unable to get nsIPrivateBrowsingService (e.g. not Firefox)
-        docIsPrivate = false;
-      }
-    }
-    // caching the result
-    this.isInPrivateBrowsing = function isInPrivateBrowsingCached() {
-      return docIsPrivate;
-    };
-    return docIsPrivate;
+    return PrivateBrowsingUtils.isWindowPrivate(this.domWindow);
   },
   download: function(data, sendResponse) {
     var self = this;
@@ -412,7 +391,7 @@ var RangedChromeActions = (function RangedChromeActionsClosure() {
 
     ChromeActions.call(this, domWindow, contentDispositionFilename);
 
-    this.pdfUrl = originalRequest.URI.resolve('');
+    this.pdfUrl = originalRequest.URI.spec;
     this.contentLength = originalRequest.contentLength;
 
     // Pass all the headers from the original request through
@@ -478,6 +457,12 @@ var RangedChromeActions = (function RangedChromeActionsClosure() {
           pdfjsLoadAction: 'range',
           begin: args.begin,
           chunk: args.chunk
+        }, '*');
+      },
+      onProgress: function RangedChromeActions_onProgress(evt) {
+        domWindow.postMessage({
+          pdfjsLoadAction: 'rangeProgress',
+          loaded: evt.loaded,
         }, '*');
       }
     });
@@ -765,33 +750,28 @@ PdfStreamConverter.prototype = {
         // We get the DOM window here instead of before the request since it
         // may have changed during a redirect.
         var domWindow = getDOMWindow(channel);
-        // Double check the url is still the correct one.
-        if (domWindow.document.documentURIObject.equals(aRequest.URI)) {
-          var actions;
-          if (rangeRequest) {
-            // We are going to be issuing range requests, so cancel the
-            // original request
-            aRequest.resume();
-            aRequest.cancel(Cr.NS_BINDING_ABORTED);
-            actions = new RangedChromeActions(domWindow,
-                contentDispositionFilename, aRequest);
-          } else {
-            actions = new StandardChromeActions(
-                domWindow, contentDispositionFilename, dataListener);
-          }
-          var requestListener = new RequestListener(actions);
-          domWindow.addEventListener(PDFJS_EVENT_ID, function(event) {
-            requestListener.receive(event);
-          }, false, true);
-          if (actions.supportsIntegratedFind()) {
-            var chromeWindow = getChromeWindow(domWindow);
-            var findEventManager = new FindEventManager(chromeWindow.gFindBar,
-                                                        domWindow,
-                                                        chromeWindow);
-            findEventManager.bind();
-          }
+        var actions;
+        if (rangeRequest) {
+          // We are going to be issuing range requests, so cancel the
+          // original request
+          aRequest.resume();
+          aRequest.cancel(Cr.NS_BINDING_ABORTED);
+          actions = new RangedChromeActions(domWindow,
+              contentDispositionFilename, aRequest);
         } else {
-          log('Dom window url did not match request url.');
+          actions = new StandardChromeActions(
+              domWindow, contentDispositionFilename, dataListener);
+        }
+        var requestListener = new RequestListener(actions);
+        domWindow.addEventListener(PDFJS_EVENT_ID, function(event) {
+          requestListener.receive(event);
+        }, false, true);
+        if (actions.supportsIntegratedFind()) {
+          var chromeWindow = getChromeWindow(domWindow);
+          var findEventManager = new FindEventManager(chromeWindow.gFindBar,
+                                                      domWindow,
+                                                      chromeWindow);
+          findEventManager.bind();
         }
         listener.onStopRequest(aRequest, context, statusCode);
       }

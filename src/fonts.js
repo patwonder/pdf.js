@@ -17,7 +17,8 @@
 /* globals assert, bytesToString, CIDToUnicodeMaps, error, ExpertCharset,
            ExpertSubsetCharset, FileReaderSync, globalScope, GlyphsUnicode,
            info, isArray, isNum, ISOAdobeCharset, isWorker, PDFJS, Stream,
-           stringToBytes, TextDecoder, TODO, warn, Lexer */
+           stringToBytes, TextDecoder, TODO, warn, Lexer, Util, shadow,
+           FontRendererFactory */
 
 'use strict';
 
@@ -39,6 +40,8 @@ var HINTING_ENABLED = false;
 var SEAC_ANALYSIS_ENABLED = false;
 
 var FONT_IDENTITY_MATRIX = [0.001, 0, 0, 0.001, 0, 0];
+
+PDFJS.disableFontFace = false;
 
 var FontFlags = {
   FixedPitch: 1,
@@ -2443,6 +2446,9 @@ var Font = (function FontClosure() {
       // name ArialBlack for example will be replaced by Helvetica.
       this.black = (name.search(/Black/g) != -1);
 
+      // if at least one width is present, remeasure all chars when exists
+      this.remeasure = Object.keys(this.widths).length > 0;
+
       this.encoding = properties.baseEncoding;
       this.noUnicodeAdaptation = true;
       this.loadedName = fontName.split('-')[0];
@@ -3016,6 +3022,11 @@ var Font = (function FontClosure() {
     mimetype: null,
     encoding: null,
 
+    get renderer() {
+      var renderer = FontRendererFactory.create(this);
+      return shadow(this, 'renderer', renderer);
+    },
+
     exportData: function Font_exportData() {
       var data = {};
       for (var i in this) {
@@ -3088,7 +3099,7 @@ var Font = (function FontClosure() {
           encoding[code] = glyphName;
         }
         properties.glyphNameMap = glyphNameMap;
-        if (!properties.hasEncoding)
+        if (properties.overridableEncoding)
           properties.baseEncoding = encoding;
       }
 
@@ -3647,80 +3658,144 @@ var Font = (function FontClosure() {
       var TTOpsStackDeltas = [
         0, 0, 0, 0, 0, 0, 0, 0, -2, -2, -2, -2, 0, 0, -2, -5,
         -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, -1, 0, -1, -1, -1, -1,
-        1, -1, -999, 0, 1, 0, 0, -2, 0, -1, -2, -1, -999, -999, -1, -1,
+        1, -1, -999, 0, 1, 0, -1, -2, 0, -1, -2, -1, -1, 0, -1, -1,
         0, 0, -999, -999, -1, -1, -1, -1, -2, -999, -2, -2, -2, 0, -2, -2,
         0, 0, -2, 0, -2, 0, 0, 0, -2, -1, -1, 1, 1, 0, 0, -1,
         -1, -1, -1, -1, -1, -1, 0, 0, -1, 0, -1, -1, 0, -999, -1, -1,
-        -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0,
+        -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         -2, -999, -999, -999, -999, -999, -1, -1, -2, -2, 0, 0, 0, 0, -1, -1,
-        -999, -2, -2, 0, 0, -1, -2, -2, 0, -999, 0, 0, 0, -1, -2];
+        -999, -2, -2, 0, 0, -1, -2, -2, 0, 0, 0, -1, -1, -1, -2];
         // 0xC0-DF == -1 and 0xE0-FF == -2
 
       function sanitizeTTProgram(table, ttContext) {
         var data = table.data;
         var i = 0, n, lastEndf = 0, lastDeff = 0;
         var stack = [];
+        var callstack = [];
+        var functionsCalled = [];
         var tooComplexToFollowFunctions =
           ttContext.tooComplexToFollowFunctions;
+        var inFDEF = false, ifLevel = 0, inELSE = 0;
         for (var ii = data.length; i < ii;) {
           var op = data[i++];
           // The TrueType instruction set docs can be found at
           // https://developer.apple.com/fonts/TTRefMan/RM05/Chap5.html
           if (op === 0x40) { // NPUSHB - pushes n bytes
             n = data[i++];
-            for (var j = 0; j < n; j++) {
-              stack.push(data[i++]);
+            if (inFDEF || inELSE) {
+              i += n;
+            } else {
+              for (var j = 0; j < n; j++) {
+                stack.push(data[i++]);
+              }
             }
           } else if (op === 0x41) { // NPUSHW - pushes n words
             n = data[i++];
-            for (var j = 0; j < n; j++) {
-              var b = data[i++];
-              stack.push((b << 8) | data[i++]);
+            if (inFDEF || inELSE) {
+              i += n * 2;
+            } else {
+              for (var j = 0; j < n; j++) {
+                var b = data[i++];
+                stack.push((b << 8) | data[i++]);
+              }
             }
           } else if ((op & 0xF8) === 0xB0) { // PUSHB - pushes bytes
             n = op - 0xB0 + 1;
-            for (var j = 0; j < n; j++) {
-              stack.push(data[i++]);
+            if (inFDEF || inELSE) {
+              i += n;
+            } else {
+              for (var j = 0; j < n; j++) {
+                stack.push(data[i++]);
+              }
             }
           } else if ((op & 0xF8) === 0xB8) { // PUSHW - pushes words
             n = op - 0xB8 + 1;
-            for (var j = 0; j < n; j++) {
-              var b = data[i++];
-              stack.push((b << 8) | data[i++]);
+            if (inFDEF || inELSE) {
+              i += n * 2;
+            } else {
+              for (var j = 0; j < n; j++) {
+                var b = data[i++];
+                stack.push((b << 8) | data[i++]);
+              }
             }
           } else if (op === 0x2B && !tooComplexToFollowFunctions) { // CALL
-            // collecting inforamtion about which functions are used
-            var funcId = stack[stack.length - 1];
-            ttContext.functionsUsed[funcId] = true;
-            if (i >= 2 && data[i - 2] === 0x2B) {
-              // all data in stack, calls are performed in sequence
-              tooComplexToFollowFunctions = true;
+            if (!inFDEF && !inELSE) {
+              // collecting inforamtion about which functions are used
+              var funcId = stack[stack.length - 1];
+              ttContext.functionsUsed[funcId] = true;
+              if (funcId in ttContext.functionsStackDeltas) {
+                stack.length += ttContext.functionsStackDeltas[funcId];
+              } else if (funcId in ttContext.functionsDefined &&
+                         functionsCalled.indexOf(funcId) < 0) {
+                callstack.push({data: data, i: i, stackTop: stack.length - 1});
+                functionsCalled.push(funcId);
+                var pc = ttContext.functionsDefined[funcId];
+                data = pc.data;
+                i = pc.i;
+              }
             }
           } else if (op === 0x2C && !tooComplexToFollowFunctions) { // FDEF
-            // collecting inforamtion about which functions are defined
-            lastDeff = i;
-            var funcId = stack[stack.length - 1];
-            ttContext.functionsDefined[funcId] = true;
-            if (i >= 2 && data[i - 2] === 0x2D) {
-              // all function ids in stack, FDEF/ENDF perfomed in sequence
+            if (inFDEF || inELSE) {
+              warn('TT: nested FDEFs not allowed');
               tooComplexToFollowFunctions = true;
             }
+            inFDEF = true;
+            // collecting inforamtion about which functions are defined
+            lastDeff = i;
+            var funcId = stack.pop();
+            ttContext.functionsDefined[funcId] = {data: data, i: i};
           } else if (op === 0x2D) { // ENDF - end of function
-            lastEndf = i;
+            if (inFDEF) {
+              inFDEF = false;
+              lastEndf = i;
+            } else {
+              var pc = callstack.pop();
+              var funcId = functionsCalled.pop();
+              data = pc.data;
+              i = pc.i;
+              ttContext.functionsStackDeltas[funcId] =
+                stack.length - pc.stackTop;
+            }
           } else if (op === 0x89) { // IDEF - instruction definition
+            if (inFDEF || inELSE) {
+              warn('TT: nested IDEFs not allowed');
+              tooComplexToFollowFunctions = true;
+            }
+            inFDEF = true;
             // recording it as a function to track ENDF
             lastDeff = i;
+          } else if (op === 0x58) { // IF
+            ++ifLevel;
+          } else if (op === 0x1B) { // ELSE
+            inELSE = ifLevel;
+          } else if (op === 0x59) { // EIF
+            if (inELSE === ifLevel) {
+              inELSE = 0;
+            }
+            --ifLevel;
+          } else if (op === 0x1C) { // JMPR
+            var offset = stack[stack.length - 1];
+            // only jumping forward to prevent infinite loop
+            if (offset > 0) { i += offset - 1; }
           }
           // Adjusting stack not extactly, but just enough to get function id
-          var stackDelta = op <= 0x8E ? TTOpsStackDeltas[op] :
-            op >= 0xC0 && op <= 0xDF ? -1 : op >= 0xE0 ? -2 : 0;
-          while (stackDelta < 0 && stack.length > 0) {
-            stack.pop();
-            stackDelta++;
-          }
-          while (stackDelta > 0) {
-            stack.push(NaN); // pushing any number into stack
-            stackDelta--;
+          if (!inFDEF && !inELSE) {
+            var stackDelta = op <= 0x8E ? TTOpsStackDeltas[op] :
+              op >= 0xC0 && op <= 0xDF ? -1 : op >= 0xE0 ? -2 : 0;
+            if (op >= 0x71 && op <= 0x75) {
+              n = stack.pop();
+              if (n === n) {
+                stackDelta = -n * 2;
+              }
+            }
+            while (stackDelta < 0 && stack.length > 0) {
+              stack.pop();
+              stackDelta++;
+            }
+            while (stackDelta > 0) {
+              stack.push(NaN); // pushing any number into stack
+              stackDelta--;
+            }
           }
         }
         ttContext.tooComplexToFollowFunctions = tooComplexToFollowFunctions;
@@ -3729,20 +3804,44 @@ var Font = (function FontClosure() {
           content.push(new Uint8Array(i - data.length));
         }
         if (lastDeff > lastEndf) {
+          warn('TT: complementing a missing function tail');
           // new function definition started, but not finished
           // complete function by [CLEAR, ENDF]
           content.push(new Uint8Array([0x22, 0x2D]));
         }
-        if (ttContext.defineMissingFunctions && !tooComplexToFollowFunctions) {
+        foldTTTable(table, content);
+      }
+
+      function addTTDummyFunctions(table, ttContext, maxFunctionDefs) {
+        var content = [table.data];
+        if (!ttContext.tooComplexToFollowFunctions) {
+          var undefinedFunctions = [];
           for (var j = 0, jj = ttContext.functionsUsed.length; j < jj; j++) {
             if (!ttContext.functionsUsed[j] || ttContext.functionsDefined[j]) {
               continue;
             }
+            undefinedFunctions.push(j);
+            if (j >= maxFunctionDefs) {
+              continue;
+            }
             // function is used, but not defined
-            // creating empty one [PUSHB, function-id, FDEF, ENDF]
-            content.push(new Uint8Array([0xB0, j, 0x2C, 0x2D]));
+            if (j < 256) {
+              // creating empty one [PUSHB, function-id, FDEF, ENDF]
+              content.push(new Uint8Array([0xB0, j, 0x2C, 0x2D]));
+            } else {
+              // creating empty one [PUSHW, function-id, FDEF, ENDF]
+              content.push(
+                new Uint8Array([0xB8, j >> 8, j & 255, 0x2C, 0x2D]));
+            }
+          }
+          if (undefinedFunctions.length > 0) {
+            warn('TT: undefined functions: ' + undefinedFunctions);
           }
         }
+        foldTTTable(table, content);
+      }
+
+      function foldTTTable(table, content) {
         if (content.length > 1) {
           // concatenating the content items
           var newLength = 0;
@@ -3765,17 +3864,22 @@ var Font = (function FontClosure() {
         var ttContext = {
           functionsDefined: [],
           functionsUsed: [],
+          functionsStackDeltas: [],
           tooComplexToFollowFunctions: false
         };
+        if (fpgm) {
+          sanitizeTTProgram(fpgm, ttContext);
+        }
         if (prep) {
-          // collecting prep functions info first
           sanitizeTTProgram(prep, ttContext);
         }
         if (fpgm) {
-          ttContext.defineMissingFunctions = true;
-          sanitizeTTProgram(fpgm, ttContext);
+          addTTDummyFunctions(fpgm, ttContext, maxFunctionDefs);
         }
       }
+
+      // The following steps modify the original font data, making copy
+      font = new Stream(new Uint8Array(font.getBytes()));
 
       // Check that required tables are present
       var requiredTables = ['OS/2', 'cmap', 'head', 'hhea',
@@ -3843,12 +3947,17 @@ var Font = (function FontClosure() {
       // Ensure the hmtx table contains the advance width and
       // sidebearings information for numGlyphs in the maxp table
       font.pos = (font.start || 0) + maxp.offset;
-      var version = int16(font.getBytes(4));
+      var version = int32(font.getBytes(4));
       var numGlyphs = int16(font.getBytes(2));
+      var maxFunctionDefs = 0;
+      if (version >= 0x00010000 && maxp.length >= 22) {
+        font.pos += 14;
+        var maxFunctionDefs = int16(font.getBytes(2));
+      }
 
       sanitizeMetrics(font, hhea, hmtx, numGlyphs);
 
-      sanitizeTTPrograms(fpgm, prep);
+      sanitizeTTPrograms(fpgm, prep, maxFunctionDefs);
 
       if (head) {
         sanitizeHead(head, numGlyphs, loca.length);
@@ -4467,6 +4576,11 @@ var Font = (function FontClosure() {
       if (!this.data)
         return null;
 
+      if (PDFJS.disableFontFace) {
+        this.disableFontFace = true;
+        return null;
+      }
+
       var data = bytesToString(this.data);
       var fontName = this.loadedName;
 
@@ -4561,6 +4675,7 @@ var Font = (function FontClosure() {
           }
           fontCharCode = this.toFontChar[charcode] || charcode;
           break;
+        case 'MMType1': // XXX at the moment only "standard" fonts are supported
         case 'Type1':
           var glyphName = this.differences[charcode] || this.encoding[charcode];
           if (!isNum(width))
@@ -5216,11 +5331,8 @@ var Type1Parser = (function Type1ParserClosure() {
           case 'Subrs':
             var num = this.readInt();
             this.getToken(); // read in 'array'
-            for (var j = 0; j < num; ++j) {
-              token = this.getToken(); // read in 'dup'
+            while ((token = this.getToken()) === 'dup') {
               var index = this.readInt();
-              if (index > j)
-                j = index;
               var length = this.readInt();
               this.getToken(); // read in 'RD' or '-|'
               var data = stream.makeSubStream(stream.pos + 1, length);
@@ -5329,7 +5441,7 @@ var Type1Parser = (function Type1ParserClosure() {
                 }
               }
             }
-            if (!properties.hasEncoding && encoding) {
+            if (properties.overridableEncoding && encoding) {
               properties.baseEncoding = encoding;
               break;
             }
@@ -5589,7 +5701,15 @@ Type1Font.prototype = {
       var field = fields[i];
       if (!properties.privateData.hasOwnProperty(field))
         continue;
-      privateDict.setByName(field, properties.privateData[field]);
+      var value = properties.privateData[field];
+      if (isArray(value)) {
+        // All of the private dictionary array data in CFF must be stored as
+        // "delta-encoded" numbers.
+        for (var j = value.length - 1; j > 0; j--) {
+          value[j] -= value[j - 1]; // ... difference from previous value
+        }
+      }
+      privateDict.setByName(field, value);
     }
     cff.topDict.privateDict = privateDict;
 
@@ -5609,9 +5729,9 @@ var CFFFont = (function CFFFontClosure() {
     this.properties = properties;
 
     var parser = new CFFParser(file, properties);
-    var cff = parser.parse();
-    var compiler = new CFFCompiler(cff);
-    this.readExtra(cff);
+    this.cff = parser.parse();
+    var compiler = new CFFCompiler(this.cff);
+    this.readExtra();
     try {
       this.data = compiler.compile();
     } catch (e) {
@@ -5623,12 +5743,10 @@ var CFFFont = (function CFFFontClosure() {
   }
 
   CFFFont.prototype = {
-    readExtra: function CFFFont_readExtra(cff) {
+    readExtra: function CFFFont_readExtra() {
       // charstrings contains info about glyphs (one element per glyph
       // containing mappings for {unicode, width})
-      var charset = cff.charset.charset;
-      var encoding = cff.encoding ? cff.encoding.encoding : null;
-      var charstrings = this.getCharStrings(charset, encoding);
+      var charstrings = this.getCharStrings();
 
       // create the mapping between charstring and glyph id
       var glyphIds = [];
@@ -5637,21 +5755,39 @@ var CFFFont = (function CFFFontClosure() {
 
       this.charstrings = charstrings;
       this.glyphIds = glyphIds;
-      this.seacs = cff.seacs;
+      this.seacs = this.cff.seacs;
     },
-    getCharStrings: function CFFFont_getCharStrings(charsets, encoding) {
+    getCharStrings: function CFFFont_getCharStrings() {
+      var cff = this.cff;
+      var charsets = cff.charset.charset;
+      var encoding = cff.encoding ? cff.encoding.encoding : null;
       var charstrings = [];
       var unicodeUsed = [];
       var unassignedUnicodeItems = [];
       var inverseEncoding = [];
-      // CID fonts don't have an encoding.
-      if (encoding !== null)
+      var gidStart = 0;
+      // Even though the CFF font may not actually be a CID font is could have
+      // CID information in the font descriptor.
+      if (this.properties.cidSystemInfo) {
+        // According to section 9.7.4.2 if the font is actually a CID font then
+        // we should use the charset to map CIDs to GIDs. If it is not actually
+        // a CID font then CIDs can be mapped directly to GIDs.
+        if (this.cff.isCIDFont) {
+          inverseEncoding = charsets;
+        } else {
+          for (var i = 0, ii = charsets.length; i < charsets.length; i++) {
+            inverseEncoding.push(i);
+          }
+        }
+      } else {
         for (var charcode in encoding)
           inverseEncoding[encoding[charcode]] = charcode | 0;
-      else
-        inverseEncoding = charsets;
-      var i = charsets[0] == '.notdef' ? 1 : 0;
-      for (var ii = charsets.length; i < ii; i++) {
+        if (charsets[0] === '.notedef') {
+          gidStart = 1;
+        }
+      }
+
+      for (var i = gidStart, ii = charsets.length; i < ii; i++) {
         var glyph = charsets[i];
 
         var code = inverseEncoding[i];
@@ -6696,6 +6832,33 @@ var CFFCompiler = (function CFFCompilerClosure() {
       var nameIndex = this.compileNameIndex(cff.names);
       output.add(nameIndex);
 
+      if (cff.isCIDFont) {
+        // The spec is unclear on how font matrices should relate to each other
+        // when there is one in the main top dict and the sub top dicts.
+        // Windows handles this differently than linux and osx so we have to
+        // normalize to work on all.
+        // Rules based off of some mailing list discussions:
+        // - If main font has a matrix and subfont doesn't, use the main matrix.
+        // - If no main font matrix and there is a subfont matrix, use the
+        //   subfont matrix.
+        // - If both have matrices, concat together.
+        // - If neither have matrices, use default.
+        // To make this work on all platforms we move the top matrix into each
+        // sub top dict and concat if necessary.
+        if (cff.topDict.hasName('FontMatrix')) {
+          var base = cff.topDict.getByName('FontMatrix');
+          cff.topDict.removeByName('FontMatrix');
+          for (var i = 0, ii = cff.fdArray.length; i < ii; i++) {
+            var subDict = cff.fdArray[i];
+            var matrix = base.slice(0);
+            if (subDict.hasName('FontMatrix')) {
+              matrix = Util.transform(matrix, subDict.getByName('FontMatrix'));
+            }
+            subDict.setByName('FontMatrix', matrix);
+          }
+        }
+      }
+
       var compiled = this.compileTopDicts([cff.topDict],
                                           output.length,
                                           cff.isCIDFont);
@@ -6767,6 +6930,14 @@ var CFFCompiler = (function CFFCompilerClosure() {
     },
     encodeFloat: function CFFCompiler_encodeFloat(num) {
       var value = num.toString();
+
+      // rounding inaccurate doubles
+      var m = /\.(\d*?)(?:9{5,20}|0{5,20})\d{0,2}(?:e(.+)|$)/.exec(value);
+      if (m) {
+        var epsilon = parseFloat('1e' + ((m[2] ? +m[2] : 0) + m[1].length));
+        value = (Math.round(num * epsilon) / epsilon).toString();
+      }
+
       var nibbles = '';
       for (var i = 0, ii = value.length; i < ii; ++i) {
         var a = value[i];

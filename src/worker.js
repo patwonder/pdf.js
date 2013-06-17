@@ -18,7 +18,7 @@
            MissingPDFException, PasswordException, PDFDocument, PDFJS, Promise,
            Stream, UnknownErrorException, warn, NetworkManager, LocalPdfManager,
            NetworkPdfManager, XRefParseException, NotImplementedException,
-           isInt */
+           isInt, PasswordResponses */
 
 'use strict';
 
@@ -137,19 +137,20 @@ var WorkerMessageHandler = {
             javaScript: results[6]
           };
           loadDocumentPromise.resolve(doc);
-        });
+        },
+        parseFailure);
       };
 
       var parseFailure = function parseFailure(e) {
         loadDocumentPromise.reject(e);
       };
 
-    pdfManager.ensureModel('checkHeader', []).then(function() {
-      pdfManager.ensureModel('parseStartXRef', []).then(function() {
-        pdfManager.ensureModel('parse', [recoveryMode]).then(
-            parseSuccess, parseFailure);
-      });
-    });
+      pdfManager.ensureModel('checkHeader', []).then(function() {
+        pdfManager.ensureModel('parseStartXRef', []).then(function() {
+          pdfManager.ensureModel('parse', [recoveryMode]).then(
+              parseSuccess, parseFailure);
+        }, parseFailure);
+      }, parseFailure);
 
       return loadDocumentPromise;
     }
@@ -160,12 +161,20 @@ var WorkerMessageHandler = {
       var source = data.source;
       var disableRange = data.disableRange;
       if (source.data) {
-        pdfManager = new LocalPdfManager(source.data, source.password);
-        pdfManagerPromise.resolve();
+        try {
+          pdfManager = new LocalPdfManager(source.data, source.password);
+          pdfManagerPromise.resolve();
+        } catch (ex) {
+          pdfManagerPromise.reject(ex);
+        }
         return pdfManagerPromise;
       } else if (source.chunkedViewerLoading) {
-        pdfManager = new NetworkPdfManager(source, handler);
-        pdfManagerPromise.resolve();
+        try {
+          pdfManager = new NetworkPdfManager(source, handler);
+          pdfManagerPromise.resolve();
+        } catch (ex) {
+          pdfManagerPromise.reject(ex);
+        }
         return pdfManagerPromise;
       }
 
@@ -202,14 +211,22 @@ var WorkerMessageHandler = {
           networkManager.abortRequest(fullRequestXhrId);
 
           source.length = length;
-          pdfManager = new NetworkPdfManager(source, handler);
-          pdfManagerPromise.resolve(pdfManager);
+          try {
+            pdfManager = new NetworkPdfManager(source, handler);
+            pdfManagerPromise.resolve(pdfManager);
+          } catch (ex) {
+            pdfManagerPromise.reject(ex);
+          }
         },
 
         onDone: function onDone(args) {
           // the data is array, instantiating directly from it
-          pdfManager = new LocalPdfManager(args.chunk, source.password);
-          pdfManagerPromise.resolve();
+          try {
+            pdfManager = new LocalPdfManager(args.chunk, source.password);
+            pdfManagerPromise.resolve();
+          } catch (ex) {
+            pdfManagerPromise.reject(ex);
+          }
         },
 
         onError: function onError(status) {
@@ -261,16 +278,16 @@ var WorkerMessageHandler = {
 
       var onSuccess = function(doc) {
         handler.send('GetDoc', { pdfInfo: doc });
-        pdfManager.ensureModel('traversePages', []);
+        pdfManager.ensureModel('traversePages', []).then(null, onFailure);
       };
 
       var onFailure = function(e) {
         if (e instanceof PasswordException) {
-          if (e.code === 'needpassword') {
+          if (e.code === PasswordResponses.NEED_PASSWORD) {
             handler.send('NeedPassword', {
               exception: e
             });
-          } else if (e.code === 'incorrectpassword') {
+          } else if (e.code === PasswordResponses.INCORRECT_PASSWORD) {
             handler.send('IncorrectPassword', {
               exception: e
             });
@@ -290,10 +307,17 @@ var WorkerMessageHandler = {
         }
       };
 
-      getPdfManager(data).then(function() {
-        loadDocument(false).then(onSuccess, function(ex) {
+      getPdfManager(data).then(function pdfManagerReady() {
+        loadDocument(false).then(onSuccess, function loadFailure(ex) {
           // Try again with recoveryMode == true
           if (!(ex instanceof XRefParseException)) {
+            if (ex instanceof PasswordException) {
+              // after password exception prepare to receive a new password
+              // to repeat loading
+              pdfManager.passwordChangedPromise = new Promise();
+              pdfManager.passwordChangedPromise.then(pdfManagerReady);
+            }
+
             onFailure(ex);
             return;
           }
@@ -302,8 +326,8 @@ var WorkerMessageHandler = {
           pdfManager.onLoadedStream().then(function() {
             loadDocument(true).then(onSuccess, onFailure);
           });
-        });
-      });
+        }, onFailure);
+      }, onFailure);
     });
 
     handler.on('GetPageRequest', function wphSetupGetPage(data) {
@@ -348,13 +372,17 @@ var WorkerMessageHandler = {
       });
     });
 
+    handler.on('UpdatePassword', function wphSetupUpdatePassword(data) {
+      pdfManager.updatePassword(data);
+    });
+
     handler.on('GetAnnotationsRequest', function wphSetupGetAnnotations(data) {
       pdfManager.getPage(data.pageIndex).then(function(page) {
-        pdfManager.ensure(page, 'getAnnotations',[]).then(
-          function(annotations) {
+        pdfManager.ensure(page, 'getAnnotationsData', []).then(
+          function(annotationsData) {
             handler.send('GetAnnotations', {
               pageIndex: data.pageIndex,
-              annotations: annotations
+              annotations: annotationsData
             });
           }
         );

@@ -14,13 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* globals PDFJS, getPdf, combineUrl, StatTimer, SpecialPowers */
+/* globals PDFJS, getPdf, combineUrl, StatTimer, SpecialPowers, Promise */
 
 'use strict';
 
 /*
  * A Test Driver for PDF.js
  */
+(function DriverClosure() {
 
 // Disable worker support for running test as
 //   https://github.com/mozilla/pdf.js/pull/764#issuecomment-2638944
@@ -43,7 +44,7 @@ function queryParams() {
   return params;
 }
 
-function load() {
+window.load = function load() {
   var params = queryParams();
   browser = params.browser;
   var manifestFile = params.manifestFile;
@@ -79,7 +80,7 @@ function load() {
   setTimeout(function() {
     r.send(null);
   }, delay);
-}
+};
 
 function cleanup() {
   // Clear out all the stylesheets since a new one is created for each font.
@@ -152,6 +153,9 @@ function nextTask() {
 }
 
 function getLastPageNum(task) {
+  if (!task.pdfDoc) {
+    return task.firstPage || 1;
+  }
   var lastPageNum = task.lastPage || 0;
   if (!lastPageNum || lastPageNum > task.pdfDoc.numPages) {
     lastPageNum = task.pdfDoc.numPages;
@@ -260,6 +264,7 @@ function nextPage(task, loadError) {
         clear(ctx);
 
         var drawContext, textLayerBuilder;
+        var initPromise = new Promise();
         if (task.type == 'text') {
           // using dummy canvas for pdf context drawing operations
           if (!dummyCanvas) {
@@ -271,10 +276,12 @@ function nextPage(task, loadError) {
 
           page.getTextContent().then(function(textContent) {
             textLayerBuilder.setTextContent(textContent);
+            initPromise.resolve();
           });
         } else {
           drawContext = ctx;
           textLayerBuilder = new NullTextLayerBuilder();
+          initPromise.resolve();
         }
         var renderContext = {
           canvasContext: drawContext,
@@ -287,11 +294,13 @@ function nextPage(task, loadError) {
           page.stats = new StatTimer();
           snapshotCurrentPage(task, error);
         });
-        page.render(renderContext).then(function() {
-          completeRender(false);
-        },
-        function(error) {
-          completeRender('render : ' + error);
+        initPromise.then(function () {
+          page.render(renderContext).then(function() {
+            completeRender(false);
+          },
+          function(error) {
+            completeRender('render : ' + error);
+          });
         });
       },
       function(error) {
@@ -416,3 +425,5 @@ function log(str) {
   if (str.lastIndexOf('\n') >= 0)
     checkScrolling();
 }
+
+})(); // DriverClosure
