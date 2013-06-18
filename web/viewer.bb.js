@@ -153,6 +153,11 @@ BoundingBoxLayerBuilder.prototype = {
     // It's not necessary to bubble everything up
     this.bbLayerDiv.setCapture(true);
     
+    // If listener still bound, e.g. due to focus lost while selecting,
+    // we should not try to initiate another selection gesture
+    if (this._onMouseMoveBinded)
+      return;
+    
     this._onMouseMoveBinded = this.onMouseMove.bind(this);
     this.bbLayerDiv.addEventListener("mousemove", this._onMouseMoveBinded, false);
     
@@ -174,6 +179,7 @@ BoundingBoxLayerBuilder.prototype = {
     this.onMouseMove(event);
     this.bbLayerDiv.removeEventListener("mousemove", this._onMouseMoveBinded,
     false);
+    this._onMouseMoveBinded = null;
   },
   
   onMouseMove: function(event) {
