@@ -2737,10 +2737,11 @@ var PageView = function pageView(container, id, scale,
       }
     );
 
-    if (textLayer) {
+    if (textLayer || bbLayer) {
       this.getTextContent().then(
         function textContentResolved(textContent) {
           textLayer.setTextContent(textContent);
+          bbLayer.setTextContent(textContent);
         }
       );
     }
@@ -3137,7 +3138,7 @@ var TextLayerBuilder = function textLayerBuilder(textLayerDiv, pageIdx) {
         CustomStyle.setProp('transform' , textDiv, transform);
         CustomStyle.setProp('transformOrigin' , textDiv, '0% 0%');
 
-        textLayerDiv.appendChild(textDiv);
+        //textLayerDiv.appendChild(textDiv);
       }
     }
 

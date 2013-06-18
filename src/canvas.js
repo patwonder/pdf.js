@@ -1043,7 +1043,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       }
     },
 
-    showText: function CanvasGraphics_showText(str, skipTextSelection) {
+    showText: function CanvasGraphics_showText(str, skipTextSelection, skipBBSelection) {
       var ctx = this.ctx;
       var current = this.current;
       var font = current.font;
@@ -1056,8 +1056,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var fontMatrix = current.fontMatrix || FONT_IDENTITY_MATRIX;
       var glyphsLength = glyphs.length;
       var textLayer = this.textLayer;
+      var bbLayer = this.bbLayer;
       var geom;
       var textSelection = textLayer && !skipTextSelection ? true : false;
+      var bbSelection = !!(textLayer && !skipBBSelection);
+      var needGeometry = textSelection || bbSelection;
       var canvasWidth = 0.0;
       var vertical = font.vertical;
       var defaultVMetrics = font.defaultVMetrics;
@@ -1070,7 +1073,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
         ctx.scale(textHScale, 1);
 
-        if (textSelection) {
+        if (needGeometry) {
           this.save();
           ctx.scale(1, -1);
           geom = this.createTextGeometry();
@@ -1116,7 +1119,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         else
           lineWidth /= scale;
 
-        if (textSelection)
+        if (needGeometry)
           geom = this.createTextGeometry();
 
         if (fontSizeScale != 1.0) {
@@ -1197,7 +1200,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         ctx.restore();
       }
 
-      if (textSelection) {
+      if (needGeometry) {
         geom.canvasWidth = canvasWidth;
         if (vertical) {
           var vmetric = font.defaultVMetrics;
@@ -1206,7 +1209,14 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           geom.y += vmetric[2] * fontSize * current.fontMatrix[0] /
                     fontSizeScale * geom.vScale;
         }
-        this.textLayer.appendText(geom);
+        if (textSelection)
+          this.textLayer.appendText(geom);
+        if (bbSelection)
+          this.bbLayer.appendBoundingBox(BoundingBox.fromGeometry(geom), {
+            type: BoundingBoxType.TEXT,
+            textContent: null, // we'll set it later through setTextContent
+            hide: true
+          });
       }
 
       return canvasWidth;
@@ -1220,19 +1230,22 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var textHScale = current.textHScale * 0.001 * current.fontDirection;
       var arrLength = arr.length;
       var textLayer = this.textLayer;
+      var bbLayer = this.bbLayer;
       var geom;
       var canvasWidth = 0.0;
       var textSelection = textLayer ? true : false;
+      var bbSelection = !!bbLayer;
+      var needGeometry = textSelection || bbSelection;
       var vertical = font.vertical;
       var spacingAccumulator = 0;
 
-      if (textSelection) {
+      if (needGeometry) {
         ctx.save();
         this.applyTextTransforms();
         geom = this.createTextGeometry();
         ctx.restore();
       }
-
+      
       for (var i = 0; i < arrLength; ++i) {
         var e = arr[i];
         if (isNum(e)) {
@@ -1243,12 +1256,12 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             current.x += spacingLength;
           }
 
-          if (textSelection)
+          if (needGeometry)
             spacingAccumulator += spacingLength;
         } else if (isString(e)) {
-          var shownCanvasWidth = this.showText(e, true);
+          var shownCanvasWidth = this.showText(e, true, true);
 
-          if (textSelection) {
+          if (needGeometry) {
             canvasWidth += spacingAccumulator + shownCanvasWidth;
             spacingAccumulator = 0;
           }
@@ -1257,7 +1270,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         }
       }
 
-      if (textSelection) {
+      if (needGeometry) {
         geom.canvasWidth = canvasWidth;
         if (vertical) {
           var fontSizeScale = current.fontSizeScale;
@@ -1267,7 +1280,15 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           geom.y += vmetric[2] * fontSize * current.fontMatrix[0] /
                     fontSizeScale * geom.vScale;
         }
-        this.textLayer.appendText(geom);
+        if (textSelection)
+          this.textLayer.appendText(geom);
+        if (bbSelection) {
+          this.bbLayer.appendBoundingBox(BoundingBox.fromGeometry(geom), {
+            type: BoundingBoxType.TEXT,
+            textContent: null, // we'll set it later through setTextContent
+            hide: false
+          });
+        }
       }
     },
     nextLineShowText: function CanvasGraphics_nextLineShowText(text) {
