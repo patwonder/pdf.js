@@ -1059,7 +1059,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var bbLayer = this.bbLayer;
       var geom;
       var textSelection = textLayer && !skipTextSelection ? true : false;
-      var bbSelection = !!(textLayer && !skipBBSelection);
+      var bbSelection = !!(bbLayer && !skipBBSelection);
       var needGeometry = textSelection || bbSelection;
       var canvasWidth = 0.0;
       var vertical = font.vertical;

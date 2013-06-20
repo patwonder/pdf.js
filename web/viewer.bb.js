@@ -43,9 +43,6 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx) {
 }
 
 BoundingBoxLayerBuilder.prototype = {
-  MIN_BB_SELECTION_WIDTH: 4,
-  MIN_BB_SELECTION_HEIGHT: 4,
-  
   beginLayout: function() {
     this.bbDivs = [];
     this.bbContents = [];
@@ -149,6 +146,14 @@ BoundingBoxLayerBuilder.prototype = {
   
   // Selection event handling
   onMouseDown: function(event) {
+    // do not process clicks on the clip button, etc
+    var target = event.target;
+    while (target != this.bbLayerDiv) {
+      if (/(?:^|\s)bypassSelection(?:$|\s)/.test(target.className))
+        return;
+      target = target.parentElement;
+    }
+    
     // We wanna handle all subsequent mouse events on the layer div
     // It's not necessary to bubble everything up
     this.bbLayerDiv.setCapture(true);
@@ -162,31 +167,67 @@ BoundingBoxLayerBuilder.prototype = {
     this.bbLayerDiv.addEventListener("mousemove", this._onMouseMoveBinded, false);
     
     var pos = Utils.translatePosition({ left: event.pageX, top: event.pageY }, null, this.bbLayerDiv);
+    this.onSelectionStart(pos);
+  },
+  
+  onMouseUp: function(event) {
+    // do not handle when no event handler is bound
+    if (!this._onMouseMoveBinded)
+      return;
+
+    this.onMouseMove(event);
+    this.bbLayerDiv.removeEventListener("mousemove", this._onMouseMoveBinded,
+    false);
+    this._onMouseMoveBinded = null;
+    
+    var pos = Utils.translatePosition({ left: event.pageX, top: event.pageY }, null, this.bbLayerDiv);
+    this.onSelectionEnd(pos);
+  },
+  
+  onMouseMove: function(event) {
+    var pos = Utils.translatePosition({ left: event.pageX, top: event.pageY }, null, this.bbLayerDiv);
+    this.onSelectionMove(pos);
+  },
+  
+  onSelectionStart: function(pos) {
     var selectionBB = this.selectionBB = new BoundingBox(pos.left, pos.top, 1, 1);
     
     // Create the div for displaying the selection
     var selectionDiv = this.selectionDiv || (this.selectionDiv = document.createElement("div"));
-    selectionDiv.className = "bbLayerSelection";
+    selectionDiv.className = "bbLayerSelection bypassSelection";
     selectionDiv.style.left = selectionBB.left + "px";
     selectionDiv.style.top = selectionBB.top + "px";
     selectionDiv.style.width = selectionBB.width + "px";
     selectionDiv.style.height = selectionBB.height + "px";
     selectionDiv.style.visibility = "hidden";
     this.bbLayerDiv.appendChild(selectionDiv);
+    
+    if (this._clipButton) {
+      this._clipButton.style.visibility = "hidden";
+    }
   },
   
-  onMouseUp: function(event) {
-    this.onMouseMove(event);
-    this.bbLayerDiv.removeEventListener("mousemove", this._onMouseMoveBinded,
-    false);
-    this._onMouseMoveBinded = null;
+  onSelectionEnd: function(pos) {
+    var clipButton = this._clipButton;
+    if (!clipButton) {
+      clipButton = this._clipButton = document.createElement("button");
+      clipButton.className = "clipButton bypassSelection";
+      clipButton.innerHTML = "Clip";
+      clipButton.style.zIndex = 1;
+      clipButton.addEventListener("click", function(event) {
+        this.doClip();
+      }.bind(this), false);
+      this.bbLayerDiv.appendChild(clipButton);
+    }
+    clipButton.style.left = pos.left + "px";
+    clipButton.style.top = pos.top + "px";
+    clipButton.style.visibility = this.isSelectionVisible() ? "visible" : "hidden";
   },
   
-  onMouseMove: function(event) {
+  onSelectionMove: function(pos) {
     var selectionBB = this.selectionBB;
     var selectionDiv = this.selectionDiv;
-    
-    var pos = Utils.translatePosition({ left: event.pageX, top: event.pageY }, null, this.bbLayerDiv);
+
     selectionBB.width = pos.left - selectionBB.left + 1;
     selectionBB.height = pos.top - selectionBB.top + 1;
     
@@ -196,8 +237,7 @@ BoundingBoxLayerBuilder.prototype = {
     selectionDiv.style.top = tempBB.top + "px";
     selectionDiv.style.width = tempBB.width + "px";
     selectionDiv.style.height = tempBB.height + "px";
-    var visible = (tempBB.width >= this.MIN_BB_SELECTION_WIDTH && tempBB.height >= this.MIN_BB_SELECTION_HEIGHT);
-    selectionDiv.style.visibility = visible ? "visible" : "hidden";
+    selectionDiv.style.visibility = this.isSelectionVisible() ? "visible" : "hidden";
   },
   
   getSelectionBB: function() {
@@ -215,5 +255,17 @@ BoundingBoxLayerBuilder.prototype = {
       tempBB.height = -tempBB.height + 2;
     }
     return tempBB;
+  },
+  
+  isSelectionVisible: function() {
+    var MIN_BB_SELECTION_WIDTH = 4;
+    var MIN_BB_SELECTION_HEIGHT = 4;
+    var tempBB = this.getSelectionBB();
+    return tempBB.width >= MIN_BB_SELECTION_WIDTH && tempBB.height >= MIN_BB_SELECTION_HEIGHT;
+  },
+  
+  doClip: function() {
+    // iterate through every bounding box and do intersection
+    
   }
 };

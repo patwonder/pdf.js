@@ -1183,12 +1183,16 @@ canvas {
   overflow: hidden;
 }
 
-.textLayer > div, .bbLayer > div:not(.bbLayerSelection) {
+.textLayer > div {
   color: transparent;
   position: absolute;
   line-height: 1;
   white-space: pre;
   cursor: text;
+}
+
+.bbLayer > div:not(.bbLayerSelection) {
+  position: absolute;
 }
 
 .bbLayer > div:not(.bbLayerSelection):hover {
@@ -1202,6 +1206,10 @@ canvas {
   position: absolute;
   background-color: rgba(255, 0, 255, 0.3);
   border: 1px solid rgba(255, 0, 255, 1.0);
+}
+
+.clipButton {
+  position: absolute;
 }
 
 .textLayer .highlight {

@@ -2740,8 +2740,10 @@ var PageView = function pageView(container, id, scale,
     if (textLayer || bbLayer) {
       this.getTextContent().then(
         function textContentResolved(textContent) {
-          textLayer.setTextContent(textContent);
-          bbLayer.setTextContent(textContent);
+          if (textLayer)
+            textLayer.setTextContent(textContent);
+          if (bbLayer)
+            bbLayer.setTextContent(textContent);
         }
       );
     }
