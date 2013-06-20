@@ -19,6 +19,15 @@ BoundingBox.prototype = {
   },
   get bottom() {
     return this.top + this.height;
+  },
+  intersect: function(bb) {
+    var PORTION_THRESHOLD = 0.5;
+    // compute the intersection area
+    var iw = Math.max(0, Math.min(this.right, bb.right) - Math.max(this.left, bb.left));
+    var ih = Math.max(0, Math.min(this.bottom, bb.bottom) - Math.max(this.top, bb.top));
+    // intersection detection based on portion of intersection area
+    var portion = iw * ih / (bb.width * bb.height);
+    return portion >= PORTION_THRESHOLD;
   }
 };
 
@@ -45,6 +54,7 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx) {
 BoundingBoxLayerBuilder.prototype = {
   beginLayout: function() {
     this.bbDivs = [];
+    this.bbs = [];
     this.bbContents = [];
   },
   
@@ -54,7 +64,6 @@ BoundingBoxLayerBuilder.prototype = {
   },
   
   renderLayer: function() {
-    var self = this;
     var bbDivs = this.bbDivs;
     var bbLayerDiv = this.bbLayerDiv;
     var bbLayerFrag = this._bbLayerFrag;
@@ -83,21 +92,8 @@ BoundingBoxLayerBuilder.prototype = {
   },
   
   setupRenderLayoutTimer: function() {
-    // Schedule renderLayout() if user has been scrolling, otherwise
-    // run it right away
     var RENDER_DELAY = 200; // in ms
-    var self = this;
-    if (Date.now() - PDFView.lastScroll > RENDER_DELAY) {
-      // Render right away
-      this.renderLayer();
-    } else {
-      // Schedule
-      if (this.renderTimer)
-        clearTimeout(this.renderTimer);
-      this.renderTimer = setTimeout(function() {
-        self.setupRenderLayoutTimer();
-      }, RENDER_DELAY);
-    }
+    this._setupTimer(this.renderLayer, function() PDFView.lastScroll, RENDER_DELAY);
   },
   
   appendBoundingBox: function(bb, content) {
@@ -112,6 +108,7 @@ BoundingBoxLayerBuilder.prototype = {
       bbDiv.style.width = bb.width + "px";
       bbDiv.style.height = bb.height + "px";
       
+      this.bbs.push(bb);
       this.bbDivs.push(bbDiv);
     }
     this.bbContents.push(content);
@@ -149,7 +146,7 @@ BoundingBoxLayerBuilder.prototype = {
     // do not process clicks on the clip button, etc
     var target = event.target;
     while (target != this.bbLayerDiv) {
-      if (/(?:^|\s)bypassSelection(?:$|\s)/.test(target.className))
+      if (target.classList && target.classList.contains("bypassSelection"))
         return;
       target = target.parentElement;
     }
@@ -205,6 +202,9 @@ BoundingBoxLayerBuilder.prototype = {
     if (this._clipButton) {
       this._clipButton.style.visibility = "hidden";
     }
+    
+    this._lastSelectionAction = Date.now();
+    this.setupDetectionTimer();
   },
   
   onSelectionEnd: function(pos) {
@@ -238,6 +238,9 @@ BoundingBoxLayerBuilder.prototype = {
     selectionDiv.style.width = tempBB.width + "px";
     selectionDiv.style.height = tempBB.height + "px";
     selectionDiv.style.visibility = this.isSelectionVisible() ? "visible" : "hidden";
+
+    this._lastSelectionAction = Date.now();
+    this.setupDetectionTimer();
   },
   
   getSelectionBB: function() {
@@ -264,8 +267,70 @@ BoundingBoxLayerBuilder.prototype = {
     return tempBB.width >= MIN_BB_SELECTION_WIDTH && tempBB.height >= MIN_BB_SELECTION_HEIGHT;
   },
   
-  doClip: function() {
+  setupDetectionTimer: function() {
+    var DETECT_DELAY = 200; // in ms
+    this._setupTimer(this.doDetect, function() this._lastSelectionAction, DETECT_DELAY);
+  },
+  
+  _setupTimer: function(action, lastActionGetter, delay) {
+    // Schedule action() if user has been doing something, otherwise
+    // run it right away
+    var self = this;
+    if (Date.now() - lastActionGetter.call(this) > delay) {
+      // Do action right away
+      action.call(this);
+      action.renderTimer = undefined;
+    } else {
+      // Schedule
+      if (action.renderTimer)
+        clearTimeout(action.renderTimer);
+      action.renderTimer = setTimeout(function() {
+        self._setupTimer(action, lastActionGetter, delay);
+      }, delay);
+    }
+  },
+  
+  _detectIntersectedBBs: function(callback, negativeCallback) {
+    var selBB = this.getSelectionBB();
+    var bbs = this.bbs;
     // iterate through every bounding box and do intersection
-    
+    bbs.forEach(function(bb, index) {
+      if (selBB.intersect(bb)) {
+        callback.call(this, bb, index);
+      } else if (negativeCallback) {
+        negativeCallback.call(this, bb, index);
+      }
+    }, this);
+  },
+  
+  doClip: function() {
+    var bbDivs = this.bbDivs;
+    var bbContents = this.bbContents;
+    var aTextContent = [];
+    this._detectIntersectedBBs(function(bb, index) {
+      var bbDiv = bbDivs[index];
+      var content = bbContents[bbDiv.dataset.contentIdx];
+      if (content.type == BoundingBoxType.TEXT) {
+        aTextContent.push(content.textContent);
+      }
+    });
+    var output = {
+      text: aTextContent.join(" ")
+    };
+    var htmlOutput = '<!DOCTYPE html><html charset="utf-8"><head></head><body><div>' +
+      Utils.getHtmlEntities(JSON.stringify(output)) + '</div></body></html>';
+    // Open new window
+    window.open("data:text/html;base64," + Base64.encode(htmlOutput));
+  },
+  
+  doDetect: function() {
+    var bbDivs = this.bbDivs;
+    this._detectIntersectedBBs(function(bb, index) {
+      var bbDiv = bbDivs[index];
+      bbDiv.classList.add("highlight");
+    }, function(bb, index) {
+      var bbDiv = bbDivs[index];
+      bbDiv.classList.remove("highlight");
+    });
   }
 };
