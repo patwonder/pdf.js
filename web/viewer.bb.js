@@ -219,8 +219,9 @@ BoundingBoxLayerBuilder.prototype = {
       }.bind(this), false);
       this.bbLayerDiv.appendChild(clipButton);
     }
-    clipButton.style.left = pos.left + "px";
-    clipButton.style.top = pos.top + "px";
+    var tempBB = this.getSelectionBB();
+    clipButton.style.left = tempBB.left + "px";
+    clipButton.style.top = tempBB.top + "px";
     clipButton.style.visibility = this.isSelectionVisible() ? "visible" : "hidden";
   },
   
