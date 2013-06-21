@@ -73,18 +73,22 @@ var PDFFunction = (function PDFFunctionClosure() {
     },
 
     fromIR: function PDFFunction_fromIR(IR) {
-      var type = IR[0];
-      switch (type) {
-        case CONSTRUCT_SAMPLED:
-          return this.constructSampledFromIR(IR);
-        case CONSTRUCT_INTERPOLATED:
-          return this.constructInterpolatedFromIR(IR);
-        case CONSTRUCT_STICHED:
-          return this.constructStichedFromIR(IR);
-        //case CONSTRUCT_POSTSCRIPT:
-        default:
-          return this.constructPostScriptFromIR(IR);
-      }
+      var func = (function() {
+        var type = IR[0];
+        switch (type) {
+          case CONSTRUCT_SAMPLED:
+            return this.constructSampledFromIR(IR);
+          case CONSTRUCT_INTERPOLATED:
+            return this.constructInterpolatedFromIR(IR);
+          case CONSTRUCT_STICHED:
+            return this.constructStichedFromIR(IR);
+          //case CONSTRUCT_POSTSCRIPT:
+          default:
+            return this.constructPostScriptFromIR(IR);
+        }
+      }.bind(this))();
+      func.toIR = function() IR;
+      return func;
     },
 
     parse: function PDFFunction_parse(xref, fn) {

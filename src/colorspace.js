@@ -107,6 +107,12 @@ var ColorSpace = (function ColorSpaceClosure() {
       return dest;
     },
     /**
+     * Dump the content of this ColorSpace into IR
+     */
+    toIR: function ColorSpace_toIR() {
+      error("Should not call ColorSpace.toIR");
+    },
+    /**
      * True if the colorspace has components in the default range of [0, 1].
      * This should be true for all colorspaces except for lab color spaces
      * which are [0,100], [-128, 127], [-128, 127].
@@ -357,6 +363,9 @@ var AlternateCS = (function AlternateCSClosure() {
     isDefaultDecode: function AlternateCS_isDefaultDecode(decodeMap) {
       return ColorSpace.isDefaultDecode(decodeMap, this.numComps);
     },
+    toIR: function AlternateCS_toIR() {
+      return ["AlternateCS", this.numComps, this.base.toIR(), this.tintFn.toIR()];
+    },
     usesZeroToOneRange: true
   };
 
@@ -368,7 +377,11 @@ var PatternCS = (function PatternCSClosure() {
     this.name = 'Pattern';
     this.base = baseCS;
   }
-  PatternCS.prototype = {};
+  PatternCS.prototype = {
+    toIR: function PatternCS_toIR() {
+      return ["PatternCS", this.base && this.base.toIR()];
+    }
+  };
 
   return PatternCS;
 })();
@@ -435,6 +448,9 @@ var IndexedCS = (function IndexedCSClosure() {
       // indexed color maps shouldn't be changed
       return true;
     },
+    toIR: function IndexedCS_toIR() {
+      return ["IndexedCS", this.base.toIR(), this.highVal, this.lookup];
+    },
     usesZeroToOneRange: true
   };
   return IndexedCS;
@@ -477,6 +493,9 @@ var DeviceGrayCS = (function DeviceGrayCSClosure() {
     createRgbBuffer: ColorSpace.prototype.createRgbBuffer,
     isDefaultDecode: function DeviceGrayCS_isDefaultDecode(decodeMap) {
       return ColorSpace.isDefaultDecode(decodeMap, this.numComps);
+    },
+    toIR: function DeviceGrayCS_toIR() {
+      return "DeviceGrayCS";
     },
     usesZeroToOneRange: true
   };
@@ -526,6 +545,9 @@ var DeviceRgbCS = (function DeviceRgbCSClosure() {
     createRgbBuffer: ColorSpace.prototype.createRgbBuffer,
     isDefaultDecode: function DeviceRgbCS_isDefaultDecode(decodeMap) {
       return ColorSpace.isDefaultDecode(decodeMap, this.numComps);
+    },
+    toIR: function DeviceRgbCS_toIR() {
+      return "DeviceRgbCS";
     },
     usesZeroToOneRange: true
   };
@@ -608,6 +630,9 @@ var DeviceCmykCS = (function DeviceCmykCSClosure() {
     createRgbBuffer: ColorSpace.prototype.createRgbBuffer,
     isDefaultDecode: function DeviceCmykCS_isDefaultDecode(decodeMap) {
       return ColorSpace.isDefaultDecode(decodeMap, this.numComps);
+    },
+    toIR: function DeviceCmykCS_toIR() {
+      return "DeviceCmykCS";
     },
     usesZeroToOneRange: true
   };
@@ -750,6 +775,13 @@ var LabCS = (function LabCSClosure() {
       // XXX: Decoding is handled with the lab conversion because of the strange
       // ranges that are used.
       return true;
+    },
+    toIR: function LabCS_toIR() {
+      return ["LabCS", {
+        WhitePoint: [this.XW, this.YW, this.ZW],
+        BlackPoint: [this.XB, this.YB, this.ZB],
+        Range: [this.amin, this.amax, this.bmin, this.bmax]
+      }]
     },
     usesZeroToOneRange: false
   };

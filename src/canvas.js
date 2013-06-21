@@ -23,6 +23,61 @@
 // <canvas> contexts store most of the state we need natively.
 // However, PDF needs a bit more state, which we store here.
 
+var ObjectClipper = (function ObjectClipper_closure() {
+  function ObjectClipper(state) {
+    this.reset(state);
+  }
+  
+  ObjectClipper.prototype = {
+    reset: function(state) {
+      this.boundingBox = new BoundingBox(0, 0, 0, 0);
+      this.isActive = false;
+      this.stateStack = [state];
+      this.stackptr = 0;
+      this.commandList = [];
+    },
+    
+    addCommand: function(command) {
+      this.commandList.push(command);
+    },
+    
+    extendPoint: function(pt, transform) {
+      if (transform) {
+        var aNewPt = Util.applyTransform([pt.x, pt.y], transform);
+        pt = { x: aNewPt[0], y: aNewPt[1] };
+      }
+      if (this.isActive) {
+        this.boundingBox.extendPoint(pt);
+      } else {
+        this.boundingBox.left = pt.x;
+        this.boundingBox.top = pt.y;
+        this.boundingBox.width = 0;
+        this.boundingBox.height = 0;
+        this.isActive = true;
+      }
+    },
+    
+    extendBoundingBox: function(bb) {
+      this.extendPoint({ x: bb.left, y: bb.top });
+      this.extendPoint({ x: bb.right, y: bb.bottom });
+    },
+    
+    onSave: function() {
+      this.stackptr++;
+    },
+    
+    onRestore: function(state) {
+      // stack underflow, should save the current context state after the restore
+      if (this.stackptr == 0)
+        this.stateStack.splice(0, 0, state);
+      else
+        this.stackptr--;
+    }
+  };
+  
+  return ObjectClipper;
+})();
+
 var TextRenderingMode = {
   FILL: 0,
   STROKE: 1,
@@ -375,7 +430,7 @@ var CanvasExtraState = (function CanvasExtraStateClosure() {
 
     this.old = old;
   }
-
+  
   CanvasExtraState.prototype = {
     clone: function CanvasExtraState_clone() {
       return Object.create(this);
@@ -452,13 +507,55 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       destCtx.mozDashOffset = sourceCtx.mozDashOffset;
     }
   }
+  
+  function getFullContextState(sourceCtx, sourceExtraState) {
+    var obj = {};
+    // Copy sourceCtx properties
+    var properties = ['strokeStyle', 'fillStyle', 'fillRule', 'globalAlpha',
+                      'lineWidth', 'lineCap', 'lineJoin', 'miterLimit',
+                      'globalCompositeOperation', 'font',  'mozCurrentTransform'];
+    for (var i = 0, l = properties.length; i < l; i++) {
+      var prop = properties[i];
+      if (prop in sourceCtx)
+        obj[prop] = sourceCtx[prop];
+    }
+    if ("getLineDash" in sourceCtx) {
+      obj.lineDash =  sourceCtx.getLineDash();
+      obj.lineDashOffset = sourceCtx.lineDashOffset;
+    } else {
+      obj.lineDash = sourceCtx.mozDash;
+      obj.lineDashOffset = sourceCtx.mozDashOffset;
+    }
+    // Copy sourceExtraState properties
+    var extraProps = ["alphaIsShape", "fontSize", "fontSizeScale", "textMatrix",
+                      "fontMatrix", "leading", "x", "y", "lineX", "lineY",
+                      "charSpacing", "wordSpacing", "textHScale",
+                      "textRenderingMode", "textRise", "fillColor",
+                      "strokeColor", "fillAlpha", "strokeAlpha", "lineWidth",
+                      "paintFormXObjectDepth"];
+    for (var i = 0, l = extraProps.length; i < l; i++) {
+      var prop = extraProps[i];
+      if (prop in sourceExtraState)
+        obj[prop] = sourceExtraState[prop];
+    }
+    obj.fillColorSpace = sourceExtraState.fillColorSpace.toIR();
+    obj.strokeColorSpace = sourceExtraState.strokeColorSpace.toIR();
+    
+    return obj;
+  }
 
   var LINE_CAP_STYLES = ['butt', 'round', 'square'];
   var LINE_JOIN_STYLES = ['miter', 'round', 'bevel'];
   var NORMAL_CLIP = {};
   var EO_CLIP = {};
+  var TermCommandType = {
+    TEXT: 0,
+    PRIMITIVE: 1,
+    IMAGE: 2,
+  };
 
   CanvasGraphics.prototype = {
+    getFullContextState: function() getFullContextState(this.ctx, this.current),
     slowCommands: {
       'stroke': true,
       'closeStroke': true,
@@ -490,6 +587,110 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       'paintImageMaskXObjectGroup': true,
       'shadingFill': true
     },
+    
+    terminatingCommands: {
+      "showText": TermCommandType.TEXT,
+      "showSpacedText": TermCommandType.TEXT,
+      "nextLineShowText": TermCommandType.TEXT,
+      "nextLineSetSpacingShowText": TermCommandType.TEXT,
+      "endText": TermCommandType.TEXT,
+      "clip": TermCommandType.PRIMITIVE,
+      "eoClip": TermCommandType.PRIMITIVE,
+      "stroke": TermCommandType.PRIMITIVE,
+      "closeStroke": TermCommandType.PRIMITIVE,
+      "fill": TermCommandType.PRIMITIVE,
+      "eoFill": TermCommandType.PRIMITIVE,
+      "fillStroke": TermCommandType.PRIMITIVE,
+      "eoFillStroke": TermCommandType.PRIMITIVE,
+      "closeFillStroke": TermCommandType.PRIMITIVE,
+      "closeEOFillStroke": TermCommandType.PRIMITIVE,
+      "shadingFill": TermCommandType.PRIMITIVE,
+      "endPath": TermCommandType.PRIMITIVE,
+      "setCharWidthAndBounds": TermCommandType.PRIMITIVE,
+      "paintXObject": TermCommandType.IMAGE,
+      "paintJpegXObject": TermCommandType.IMAGE,
+      "paintImageXObject": TermCommandType.IMAGE,
+      "paintInlineImageXObject": TermCommandType.IMAGE,
+      "paintInlineImageXObjectGroup": TermCommandType.IMAGE,
+      "paintImageMaskXObject": TermCommandType.IMAGE,
+      "paintImageMaskXObjectGroup": TermCommandType.IMAGE
+    },
+
+    stateCommands: {
+      // Graphics state
+      "save": true,
+      "restore": true,
+      "setLineWidth": true,
+      "setLineCap": true,
+      "setLineJoin": true,
+      "setMiterLimit": true,
+      "setDash": true,
+      "setRenderingIntent": true,
+      "setFlatness": true,
+      "setGState": true,
+      "transform": true,
+      // Text
+      "beginText": true,
+      "endText": false,
+      "setCharSpacing": true,
+      "setWordSpacing": true,
+      "setHScale": true,
+      "setLeading": true,
+      "setFont": true,
+      "setTextRenderingMode": true,
+      "setTextRise": true,
+      "moveText": true,
+      "setLeadingMoveText": true,
+      "setTextMatrix": true,
+      "nextLine": true,
+      // Type3 fonts
+      "setCharWidth": true,
+      "setCharWidthAndBounds": false,
+      // Color
+      "setStrokeColorSpace": true,
+      "setFillColorSpace": true,
+      "setStrokeColor": true,
+      "setStrokeColorN": true,
+      "setFillColor": true,
+      "setFillColorN": true,
+      "setStrokeGray": true,
+      "setFillGray": true,
+      "setStrokeRGBColor": true,
+      "setFillRGBColor": true,
+      "setStrokeCMYKColor": true,
+      "setFillCMYKColor": true,
+    },
+    
+    // Object clipper
+    recordObject: function CanvasGraphics_recordObject(type) {
+      var clipper = this.clipper;
+      if (!clipper.isActive || (clipper.boundingBox.width == 0 && clipper.boundingBox.height == 0))
+        return;
+        
+      var bb = clipper.boundingBox;
+      if (bb.width == 0) bb.width = 1;
+      else if (bb.height == 0) bb.height = 1;
+        
+      var bbLayer = this.bbLayer;
+      var bbtype;
+      switch (type) {
+      case TermCommandType.TEXT:
+        bbtype = BoundingBoxType.PRIMITIVE_TEXT;
+        break;
+      case TermCommandType.IMAGE:
+        bbtype = BoundingBoxType.IMAGE;
+        break;
+      case TermCommandType.PRIMITIVE:
+      default:
+        bbtype = BoundingBoxType.PRIMITIVE;
+        break;
+      }
+      bbLayer.appendBoundingBox(clipper.boundingBox, {
+        type: bbtype,
+        stateStack: clipper.stateStack,
+        commands: clipper.commandList
+      });
+    },
 
     beginDrawing: function CanvasGraphics_beginDrawing(viewport, transparency) {
       // For pdfs that use blend modes we have to clear the canvas else certain
@@ -518,6 +719,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       }
       if (this.bbLayer) {
         this.bbLayer.beginLayout();
+        this.clipper = new ObjectClipper(null);
       }
       if (this.imageLayer) {
         this.imageLayer.beginLayout();
@@ -545,6 +747,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var objs = this.objs;
       var fnName;
       var slowCommands = this.slowCommands;
+      var termCommands = this.terminatingCommands;
+      var stateCommands = this.stateCommands;
 
       while (true) {
         if (stepper && i === stepper.nextBreakPoint) {
@@ -554,27 +758,40 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
         fnName = fnArray[i];
 
-        if (fnName !== 'dependency') {
-          this[fnName].apply(this, argsArray[i]);
-        } else {
-          var deps = argsArray[i];
-          for (var n = 0, nn = deps.length; n < nn; n++) {
-            var depObjId = deps[n];
-            var common = depObjId.substring(0, 2) == 'g_';
+        if (this.clipper && (this.clipper.commandList.length != 0 || !stateCommands[fnName])) {
+          if (this.clipper.commandList.length == 0)
+            this.clipper.reset(this.getFullContextState());
+          this.clipper.addCommand({ name: fnName, args: argsArray[i] });
+        }
+        
+        try {
+          if (fnName !== 'dependency') {
+            this[fnName].apply(this, argsArray[i]);
+          } else {
+            var deps = argsArray[i];
+            for (var n = 0, nn = deps.length; n < nn; n++) {
+              var depObjId = deps[n];
+              var common = depObjId.substring(0, 2) == 'g_';
 
-            // If the promise isn't resolved yet, add the continueCallback
-            // to the promise and bail out.
-            if (!common && !objs.isResolved(depObjId)) {
-              objs.get(depObjId, continueCallback);
-              return i;
-            }
-            if (common && !commonObjs.isResolved(depObjId)) {
-              commonObjs.get(depObjId, continueCallback);
-              return i;
+              // If the promise isn't resolved yet, add the continueCallback
+              // to the promise and bail out.
+              if (!common && !objs.isResolved(depObjId)) {
+                objs.get(depObjId, continueCallback);
+                return i;
+              }
+              if (common && !commonObjs.isResolved(depObjId)) {
+                commonObjs.get(depObjId, continueCallback);
+                return i;
+              }
             }
           }
+        } finally {
+          if (this.clipper && (fnName in termCommands)) {
+            this.recordObject(termCommands[fnName]);
+            this.clipper.reset(null);
+          }
         }
-
+        
         i++;
 
         // If the entire operatorList was executed, stop as were done.
@@ -705,6 +922,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var old = this.current;
       this.stateStack.push(old);
       this.current = old.clone();
+      if (this.clipper)
+        this.clipper.onSave();
     },
     restore: function CanvasGraphics_restore() {
       var prev = this.stateStack.pop();
@@ -712,6 +931,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         this.current = prev;
         this.ctx.restore();
       }
+      if (this.clipper)
+        this.clipper.onRestore(this.getFullContextState());
     },
     transform: function CanvasGraphics_transform(a, b, c, d, e, f) {
       this.ctx.transform(a, b, c, d, e, f);
@@ -723,26 +944,66 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       this.current.setCurrentPoint(x, y);
     },
     lineTo: function CanvasGraphics_lineTo(x, y) {
+      var current = this.current;
+      if (this.clipper) {
+        var transform = this.ctx.mozCurrentTransform;
+        var clipper = this.clipper;
+        clipper.extendPoint({ x: current.x, y: current.y }, transform);
+        clipper.extendPoint({ x: x, y: y }, transform);
+      }
       this.ctx.lineTo(x, y);
-      this.current.setCurrentPoint(x, y);
+      current.setCurrentPoint(x, y);
     },
     curveTo: function CanvasGraphics_curveTo(x1, y1, x2, y2, x3, y3) {
+      var current = this.current;
+      if (this.clipper) {
+        // TODO: calc using real BBs, currently only an approximation
+        var transform = this.ctx.mozCurrentTransform;
+        var clipper = this.clipper;
+        clipper.extendPoint({ x: current.x, y: current.y }, transform);
+        clipper.extendPoint({ x: x1, y: y1 }, transform);
+        clipper.extendPoint({ x: x2, y: y2 }, transform);
+        clipper.extendPoint({ x: x3, y: y3 }, transform);
+      }
       this.ctx.bezierCurveTo(x1, y1, x2, y2, x3, y3);
-      this.current.setCurrentPoint(x3, y3);
+      current.setCurrentPoint(x3, y3);
     },
     curveTo2: function CanvasGraphics_curveTo2(x2, y2, x3, y3) {
       var current = this.current;
+      if (this.clipper) {
+        // TODO: calc using real BBs, currently only an approximation
+        var transform = this.ctx.mozCurrentTransform;
+        var clipper = this.clipper;
+        clipper.extendPoint({ x: current.x, y: current.y }, transform);
+        clipper.extendPoint({ x: x2, y: y2 }, transform);
+        clipper.extendPoint({ x: x3, y: y3 }, transform);
+      }
       this.ctx.bezierCurveTo(current.x, current.y, x2, y2, x3, y3);
       current.setCurrentPoint(x3, y3);
     },
     curveTo3: function CanvasGraphics_curveTo3(x1, y1, x3, y3) {
+      var current = this.current;
+      if (this.clipper) {
+        // TODO: calc using real BBs, currently only an approximation
+        var transform = this.ctx.mozCurrentTransform;
+        var clipper = this.clipper;
+        clipper.extendPoint({ x: current.x, y: current.y }, transform);
+        clipper.extendPoint({ x: x1, y: y1 }, transform);
+        clipper.extendPoint({ x: x3, y: y3 }, transform);
+      }
       this.curveTo(x1, y1, x3, y3, x3, y3);
-      this.current.setCurrentPoint(x3, y3);
+      current.setCurrentPoint(x3, y3);
     },
     closePath: function CanvasGraphics_closePath() {
       this.ctx.closePath();
     },
     rectangle: function CanvasGraphics_rectangle(x, y, width, height) {
+      if (this.clipper) {
+        var transform = this.ctx.mozCurrentTransform;
+        var clipper = this.clipper;
+        clipper.extendPoint({ x: x, y: y }, transform);
+        clipper.extendPoint({ x: x + width, y: y + height }, transform);
+      }
       this.ctx.rect(x, y, width, height);
     },
     stroke: function CanvasGraphics_stroke(consumePath) {
@@ -1211,12 +1472,15 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         }
         if (textSelection)
           this.textLayer.appendText(geom);
-        if (bbSelection)
+        if (bbSelection) {
           this.bbLayer.appendBoundingBox(BoundingBox.fromGeometry(geom), {
             type: BoundingBoxType.TEXT,
             textContent: null, // we'll set it later through setTextContent
             hide: true
           });
+          if (this.clipper)
+            this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
+        }
       }
 
       return canvasWidth;

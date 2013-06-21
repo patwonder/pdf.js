@@ -3,7 +3,8 @@
 var BoundingBoxType = {
   TEXT: 1,
   IMAGE: 2,
-  PRIMITIVE: 3
+  PRIMITIVE: 3,
+  PRIMITIVE_TEXT: 4
 };
 
 function BoundingBox(left, top, width, height) {
@@ -28,6 +29,19 @@ BoundingBox.prototype = {
     // intersection detection based on portion of intersection area
     var portion = iw * ih / (bb.width * bb.height);
     return portion >= PORTION_THRESHOLD;
+  },
+  extendPoint: function(pt) {
+    if (pt.x < this.left) {
+      this.width = this.right - pt.x;
+      this.left = pt.x;
+    } else if (pt.x > this.right)
+      this.width = pt.x - this.left;
+    
+    if (pt.y < this.top) {
+      this.height = this.bottom - pt.y;
+      this.top = pt.y;
+    } else if (pt.y > this.bottom)
+      this.height = pt.y - this.top;
   }
 };
 
@@ -308,15 +322,19 @@ BoundingBoxLayerBuilder.prototype = {
     var bbDivs = this.bbDivs;
     var bbContents = this.bbContents;
     var aTextContent = [];
+    var aGraphicsContent = [];
     this._detectIntersectedBBs(function(bb, index) {
       var bbDiv = bbDivs[index];
       var content = bbContents[bbDiv.dataset.contentIdx];
       if (content.type == BoundingBoxType.TEXT) {
         aTextContent.push(content.textContent);
+      } else {
+        aGraphicsContent.push(content);
       }
     });
     var output = {
-      text: aTextContent.join(" ")
+      text: aTextContent.join(" "),
+      graphics: aGraphicsContent
     };
     var htmlOutput = '<!DOCTYPE html><html charset="utf-8"><head></head><body><div>' +
       Utils.getHtmlEntities(JSON.stringify(output)) + '</div></body></html>';
