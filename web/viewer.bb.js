@@ -21,6 +21,9 @@ BoundingBox.prototype = {
   get bottom() {
     return this.top + this.height;
   },
+  clone: function() {
+    return new BoundingBox(this.left, this.top, this.width, this.height);
+  },
   intersect: function(bb) {
     var PORTION_THRESHOLD = 0.8;
     // compute the intersection area
@@ -42,6 +45,10 @@ BoundingBox.prototype = {
       this.top = pt.y;
     } else if (pt.y > this.bottom)
       this.height = pt.y - this.top;
+  },
+  extendBoundingBox: function(bb) {
+    this.extendPoint({ x: bb.left, y: bb.top });
+    this.extendPoint({ x: bb.right, y: bb.bottom });
   },
   restrict: function(bb) {
     if (this.left < bb.left) {
@@ -70,6 +77,12 @@ BoundingBox.fromGeometry = function(geom) {
     /*height*/fontHeight);
 };
 
+BoundingBox.fromElement = function(element, bbLayerDiv) {
+  var pos = { left: element.offsetLeft, top: element.offsetTop };
+  pos = Utils.translatePosition(pos, element.offsetParent, bbLayerDiv);
+  return new BoundingBox(pos.left, pos.top, element.offsetWidth, element.offsetHeight);
+};
+
 function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx) {
   this._bbLayerFrag = document.createDocumentFragment();
   
@@ -79,6 +92,14 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx) {
   
   this.isSelecting = false;
   this.selectionBB = new BoundingBox(0, 0, 0, 0);
+}
+
+BoundingBoxLayerBuilder.isBBVisible = function(bb) {
+  var MIN_BB_SELECTION_WIDTH = 4;
+  var MIN_BB_SELECTION_HEIGHT = 4;
+  var width = Math.abs(bb.width - 1) + 1;
+  var height = Math.abs(bb.height - 1) + 1;
+  return width >= MIN_BB_SELECTION_WIDTH && height >= MIN_BB_SELECTION_HEIGHT;
 }
 
 BoundingBoxLayerBuilder.prototype = {
@@ -181,6 +202,11 @@ BoundingBoxLayerBuilder.prototype = {
       target = target.parentElement;
     }
     
+    var initialBB = null;
+    if (Utils.matchesSelector(event.target, ".bbLayer > div:not(.bbLayerSelection)")) {
+      initialBB = BoundingBox.fromElement(event.target, this.bbLayerDiv);
+    }
+    
     // We wanna handle all subsequent mouse events on the layer div
     // It's not necessary to bubble everything up
     this.bbLayerDiv.setCapture(true);
@@ -194,7 +220,7 @@ BoundingBoxLayerBuilder.prototype = {
     this.bbLayerDiv.addEventListener("mousemove", this._onMouseMoveBinded, false);
     
     var pos = Utils.translatePosition({ left: event.pageX, top: event.pageY }, null, this.bbLayerDiv);
-    this.onSelectionStart(pos);
+    this.onSelectionStart(pos, initialBB);
   },
   
   onMouseUp: function(event) {
@@ -216,8 +242,10 @@ BoundingBoxLayerBuilder.prototype = {
     this.onSelectionMove(pos);
   },
   
-  onSelectionStart: function(pos) {
+  onSelectionStart: function(pos, initialBB) {
     var selectionBB = this.selectionBB = new BoundingBox(pos.left, pos.top, 1, 1);
+    this.initialBB = initialBB || selectionBB.clone();
+    selectionBB = this.initialBB;
     
     // Create the div for displaying the selection
     var selectionDiv = this.selectionDiv || (this.selectionDiv = document.createElement("div"));
@@ -226,7 +254,7 @@ BoundingBoxLayerBuilder.prototype = {
     selectionDiv.style.top = selectionBB.top + "px";
     selectionDiv.style.width = selectionBB.width + "px";
     selectionDiv.style.height = selectionBB.height + "px";
-    selectionDiv.style.visibility = "hidden";
+    selectionDiv.style.visibility = this.isSelectionVisible() ? "visible" : "hidden";
     this.bbLayerDiv.appendChild(selectionDiv);
     
     if (this._clipButton) {
@@ -276,7 +304,9 @@ BoundingBoxLayerBuilder.prototype = {
   
   getSelectionBB: function() {
     var selectionBB = this.selectionBB;
-
+    if (!BoundingBoxLayerBuilder.isBBVisible(selectionBB))
+      selectionBB = this.initialBB;
+    
     // handle reversed selection
     var tempBB = new BoundingBox(selectionBB.left, selectionBB.top,
       selectionBB.width, selectionBB.height);
@@ -292,10 +322,8 @@ BoundingBoxLayerBuilder.prototype = {
   },
   
   isSelectionVisible: function() {
-    var MIN_BB_SELECTION_WIDTH = 4;
-    var MIN_BB_SELECTION_HEIGHT = 4;
     var tempBB = this.getSelectionBB();
-    return tempBB.width >= MIN_BB_SELECTION_WIDTH && tempBB.height >= MIN_BB_SELECTION_HEIGHT;
+    return BoundingBoxLayerBuilder.isBBVisible(tempBB);
   },
   
   setupDetectionTimer: function() {

@@ -181,5 +181,23 @@ var Utils = {
     var pre = document.createElement("pre");
     pre.textContent = str;
     return pre.innerHTML;
+  },
+  
+  matchesSelector: function(element, selector) {
+    if (element.mozMatchesSelector) {
+      return element.mozMatchesSelector(selector);
+    } else if (element.webkitMatchesSelector) {
+      return element.webkitMatchesSelector(selector);
+    } else if (element.matchesSelector) {
+      return element.matchesSelector(selector);
+    } else {
+      try {
+        var elems = element.parentElement ? element.parentElement.querySelectorAll(selector) : [];
+        for (var i = 0, l = elems.length; i < l; i++) {
+          if (elems[i] === element) return true;
+        }
+      } catch (ex) { }
+      return false;
+    }
   }
 };

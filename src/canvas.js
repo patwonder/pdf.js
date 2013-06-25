@@ -31,7 +31,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
   ObjectClipper.prototype = {
     reset: function(state) {
       this.boundingBox = new BoundingBox(0, 0, 0, 0);
-      this.outerBoundingBox = new BoundingBox(-1e11, -1e11, 1e11, 1e11);
+      this.outerBoundingBox = new BoundingBox(-1e11, -1e11, 2e11, 2e11);
       this.isActive = false;
       this.stateStack = [state];
       this.stackptr = 0;
