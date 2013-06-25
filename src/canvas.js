@@ -20,9 +20,7 @@
 
 'use strict';
 
-// <canvas> contexts store most of the state we need natively.
-// However, PDF needs a bit more state, which we store here.
-
+// Clips (primitive) objects inside the PDF page
 var ObjectClipper = (function ObjectClipper_closure() {
   function ObjectClipper(state) {
     this.reset(state);
@@ -88,6 +86,9 @@ var ObjectClipper = (function ObjectClipper_closure() {
   
   return ObjectClipper;
 })();
+
+// <canvas> contexts store most of the state we need natively.
+// However, PDF needs a bit more state, which we store here.
 
 var TextRenderingMode = {
   FILL: 0,
