@@ -31,6 +31,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
   ObjectClipper.prototype = {
     reset: function(state) {
       this.boundingBox = new BoundingBox(0, 0, 0, 0);
+      this.outerBoundingBox = new BoundingBox(-1e11, -1e11, 1e11, 1e11);
       this.isActive = false;
       this.stateStack = [state];
       this.stackptr = 0;
@@ -60,6 +61,16 @@ var ObjectClipper = (function ObjectClipper_closure() {
     extendBoundingBox: function(bb) {
       this.extendPoint({ x: bb.left, y: bb.top });
       this.extendPoint({ x: bb.right, y: bb.bottom });
+    },
+    
+    clip: function() {
+      this.outerBoundingBox = this.boundingBox;
+      this.boundingBox = new BoundingBox(0, 0, 0, 0);
+      this.isActive = false;
+    },
+    
+    restrictBoundingBox: function() {
+      this.boundingBox.restrict(this.outerBoundingBox);
     },
     
     onSave: function() {
@@ -552,6 +563,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     TEXT: 0,
     PRIMITIVE: 1,
     IMAGE: 2,
+    FORMXOBJECT: 3,
+    OTHER: 4
   };
 
   CanvasGraphics.prototype = {
@@ -589,6 +602,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     },
     
     terminatingCommands: {
+      "dependency": TermCommandType.OTHER,
       "showText": TermCommandType.TEXT,
       "showSpacedText": TermCommandType.TEXT,
       "nextLineShowText": TermCommandType.TEXT,
@@ -613,7 +627,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       "paintInlineImageXObject": TermCommandType.IMAGE,
       "paintInlineImageXObjectGroup": TermCommandType.IMAGE,
       "paintImageMaskXObject": TermCommandType.IMAGE,
-      "paintImageMaskXObjectGroup": TermCommandType.IMAGE
+      "paintImageMaskXObjectGroup": TermCommandType.IMAGE,
+      "paintFormXObjectEnd": TermCommandType.FORMXOBJECT
     },
 
     stateCommands: {
@@ -664,6 +679,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     // Object clipper
     recordObject: function CanvasGraphics_recordObject(type) {
       var clipper = this.clipper;
+      this.clipper.restrictBoundingBox();
       if (!clipper.isActive || (clipper.boundingBox.width == 0 && clipper.boundingBox.height == 0))
         return;
         
@@ -787,8 +803,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           }
         } finally {
           if (this.clipper && (fnName in termCommands)) {
-            this.recordObject(termCommands[fnName]);
-            this.clipper.reset(null);
+            // Treat form XObject as a whole
+            if (this.current.paintFormXObjectDepth == 0) {
+              this.recordObject(termCommands[fnName]);
+              this.clipper.reset(null);
+            }
           }
         }
         
@@ -1103,9 +1122,13 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     // Clipping
     clip: function CanvasGraphics_clip() {
       this.pendingClip = NORMAL_CLIP;
+      if (this.clipper && this.current.paintFormXObjectDepth == 0)
+        this.clipper.clip();
     },
     eoClip: function CanvasGraphics_eoClip() {
       this.pendingClip = EO_CLIP;
+      if (this.clipper && this.current.paintFormXObjectDepth == 0)
+        this.clipper.clip();
     },
 
     // Text
@@ -1745,7 +1768,6 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     paintFormXObjectBegin: function CanvasGraphics_paintFormXObjectBegin(matrix,
                                                                         bbox) {
       this.save();
-      this.current.paintFormXObjectDepth++;
 
       if (matrix && isArray(matrix) && 6 == matrix.length)
         this.transform.apply(this, matrix);
@@ -1757,6 +1779,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         this.clip();
         this.endPath();
       }
+      
+      this.current.paintFormXObjectDepth++;
     },
 
     paintFormXObjectEnd: function CanvasGraphics_paintFormXObjectEnd() {

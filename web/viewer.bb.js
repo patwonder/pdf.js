@@ -22,7 +22,7 @@ BoundingBox.prototype = {
     return this.top + this.height;
   },
   intersect: function(bb) {
-    var PORTION_THRESHOLD = 0.5;
+    var PORTION_THRESHOLD = 0.8;
     // compute the intersection area
     var iw = Math.max(0, Math.min(this.right, bb.right) - Math.max(this.left, bb.left));
     var ih = Math.max(0, Math.min(this.bottom, bb.bottom) - Math.max(this.top, bb.top));
@@ -42,6 +42,22 @@ BoundingBox.prototype = {
       this.top = pt.y;
     } else if (pt.y > this.bottom)
       this.height = pt.y - this.top;
+  },
+  restrict: function(bb) {
+    if (this.left < bb.left) {
+      this.width -= bb.left - this.left;
+      this.left = bb.left;
+    }
+    if (this.top < bb.top) {
+      this.height -= bb.top - this.top;
+      this.top = bb.top;
+    }
+    if (this.right > bb.right) {
+      this.width -= this.right - bb.right;
+    }
+    if (this.bottom > bb.bottom) {
+      this.height -= this.bottom - bb.bottom;
+    }
   }
 };
 
@@ -338,8 +354,10 @@ BoundingBoxLayerBuilder.prototype = {
     };
     var htmlOutput = '<!DOCTYPE html><html charset="utf-8"><head></head><body><div>' +
       Utils.getHtmlEntities(JSON.stringify(output)) + '</div></body></html>';
+    //var xmlOutput = '<?xml version="1.0"?><ClippedObject>' + json2xml(output) + '</ClippedObject>';
     // Open new window
     window.open("data:text/html;base64," + Base64.encode(htmlOutput));
+    //window.open("data:text/xml;base64," + Base64.encode(xmlOutput));
   },
   
   doDetect: function() {
