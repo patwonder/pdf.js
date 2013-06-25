@@ -154,6 +154,13 @@ var Base64 = {
 };
 
 var Utils = {
+  assertEquals: function(actual, expected, expression) {
+    if (actual !== expected) {
+      throw new Error("Assertion failed: Expression " + expression + 
+        ",\n\texpected " + expected + ", actual result is " + actual);
+    }
+  },
+  
   // Return the position of the topleft corner of the client area relative to 
   // the entire document
   getClientPosition: function(element) {
@@ -199,5 +206,9 @@ var Utils = {
       } catch (ex) { }
       return false;
     }
-  }
+  },
+  
+  shouldConcatText: function(part1, part2, isSameLine) {
+    
+  },
 };

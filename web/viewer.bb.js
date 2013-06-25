@@ -399,3 +399,5 @@ BoundingBoxLayerBuilder.prototype = {
     });
   }
 };
+
+setTimeout(function() { Test.run(); }, 0);
