@@ -519,15 +519,39 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       destCtx.mozDashOffset = sourceCtx.mozDashOffset;
     }
   }
-  
+
+  var ctxProps = ['strokeStyle', 'fillStyle', 'fillRule', 'globalAlpha',
+                  'lineWidth', 'lineCap', 'lineJoin', 'miterLimit',
+                  'globalCompositeOperation', 'font',  'mozCurrentTransform'];
+  var ctxExtraProps = ["alphaIsShape", "fontSize", "fontSizeScale", "textMatrix",
+                      "fontMatrix", "leading", "x", "y", "lineX", "lineY",
+                      "charSpacing", "wordSpacing", "textHScale",
+                      "textRenderingMode", "textRise", "fillColor",
+                      "strokeColor", "fillAlpha", "strokeAlpha", "lineWidth",
+                      "paintFormXObjectDepth"];
+  /**
+   * See http://html5.litten.com/understanding-save-and-restore-for-the-canvas-context/
+   * Each context maintains a stack of drawing states. Drawing states consist of:
+   *  * The current transformation matrix.
+   *  * The current clipping region.
+   *  * The current values of the following attributes: strokeStyle, fillStyle,
+   *    globalAlpha, lineWidth, lineCap, lineJoin, miterLimit, shadowOffsetX,
+   *    shadowOffsetY, shadowBlur, shadowColor, globalCompositeOperation, font,
+   *    textAlign, textBaseline.
+   *
+   * The current path and the current bitmap are not part of the drawing state.
+   * The current path is persistent, and can only be reset using the beginPath()
+   * method. The current bitmap is a property of the canvas, not the context.
+   *
+   * We currently cannot save the current clipping region of the 2d context,
+   * which might cause redrawn objects appear outside of its clipping region in
+   * some scenarios.
+   */
   function getFullContextState(sourceCtx, sourceExtraState) {
     var obj = {};
     // Copy sourceCtx properties
-    var properties = ['strokeStyle', 'fillStyle', 'fillRule', 'globalAlpha',
-                      'lineWidth', 'lineCap', 'lineJoin', 'miterLimit',
-                      'globalCompositeOperation', 'font',  'mozCurrentTransform'];
-    for (var i = 0, l = properties.length; i < l; i++) {
-      var prop = properties[i];
+    for (var i = 0, l = ctxProps.length; i < l; i++) {
+      var prop = ctxProps[i];
       if (prop in sourceCtx)
         obj[prop] = sourceCtx[prop];
     }
@@ -539,14 +563,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       obj.lineDashOffset = sourceCtx.mozDashOffset;
     }
     // Copy sourceExtraState properties
-    var extraProps = ["alphaIsShape", "fontSize", "fontSizeScale", "textMatrix",
-                      "fontMatrix", "leading", "x", "y", "lineX", "lineY",
-                      "charSpacing", "wordSpacing", "textHScale",
-                      "textRenderingMode", "textRise", "fillColor",
-                      "strokeColor", "fillAlpha", "strokeAlpha", "lineWidth",
-                      "paintFormXObjectDepth"];
-    for (var i = 0, l = extraProps.length; i < l; i++) {
-      var prop = extraProps[i];
+    for (var i = 0, l = ctxExtraProps.length; i < l; i++) {
+      var prop = ctxExtraProps[i];
       if (prop in sourceExtraState)
         obj[prop] = sourceExtraState[prop];
     }
@@ -554,6 +572,30 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     obj.strokeColorSpace = sourceExtraState.strokeColorSpace.toIR();
     
     return obj;
+  }
+  
+  function setFullContextState(ctx, extraState, fullState) {
+    // Copy ctx properties
+    for (var i = 0, l = ctxProps.length; i < l; i++) {
+      var prop = ctxProps[i];
+      if (prop in fullState)
+        ctx[prop] = fullState[prop];
+    }
+    if ("setLineDash" in ctx) {
+      ctx.setLineDash(fullState.lineDash);
+      ctx.lineDashOffset = fullState.lineDashOffset;
+    } else {
+      ctx.mozDash = fullState.lineDash;
+      ctx.mozDashOffset = fullState.lineDashOffset;
+    }
+    // Copy extraState properties
+    for (var i = 0, l = ctxExtraProps.length; i < l; i++) {
+      var prop = ctxExtraProps[i];
+      if (prop in fullState)
+        extraState[prop] = fullState[prop];
+    }
+    extraState.fillColorSpace = ColorSpace.fromIR(fullState.fillColorSpace);
+    extraState.strokeColorSpace = ColorSpace.fromIR(fullState.strokeColorSpace);
   }
 
   var LINE_CAP_STYLES = ['butt', 'round', 'square'];
@@ -569,7 +611,12 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
   };
 
   CanvasGraphics.prototype = {
-    getFullContextState: function() getFullContextState(this.ctx, this.current),
+    getFullContextState: function() {
+      return getFullContextState(this.ctx, this.current);
+    },
+    setFullContextState: function(fullState) {
+      setFullContextState(this.ctx, this.current, fullState);
+    },
     slowCommands: {
       'stroke': true,
       'closeStroke': true,
