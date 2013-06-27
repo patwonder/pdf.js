@@ -1547,7 +1547,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           this.bbLayer.appendBoundingBox(BoundingBox.fromGeometry(geom), {
             type: BoundingBoxType.TEXT,
             textContent: null, // we'll set it later through setTextContent
-            hide: true
+            hide: false
           });
           if (this.clipper)
             this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
@@ -1623,6 +1623,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             textContent: null, // we'll set it later through setTextContent
             hide: false
           });
+          if (this.clipper)
+            this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
         }
       }
     },

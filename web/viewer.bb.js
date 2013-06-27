@@ -83,7 +83,7 @@ BoundingBox.fromElement = function(element, bbLayerDiv) {
   return new BoundingBox(pos.left, pos.top, element.offsetWidth, element.offsetHeight);
 };
 
-function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx) {
+function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height) {
   this._bbLayerFrag = document.createDocumentFragment();
   
   this.bbLayerDiv = bbLayerDiv;
@@ -92,6 +92,7 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx) {
   
   this.isSelecting = false;
   this.selectionBB = new BoundingBox(0, 0, 0, 0);
+  this.canvasBB = new BoundingBox(0, 0, width, height);
 }
 
 BoundingBoxLayerBuilder.isBBVisible = function(bb) {
@@ -149,6 +150,7 @@ BoundingBoxLayerBuilder.prototype = {
   
   appendBoundingBox: function(bb, content) {
     if (!content.hide) {
+      bb.restrict(this.canvasBB);
       var bbDiv = document.createElement("div");
       
       bbDiv.dataset.pageIdx = this.pageIdx;
@@ -368,14 +370,21 @@ BoundingBoxLayerBuilder.prototype = {
     var aTextContent = [];
     var aTextContentIndex = [];
     var aGraphicsContent = [];
+    var textIndex = 0;
     this._detectIntersectedBBs(function(bb, index) {
       var bbDiv = bbDivs[index];
       var content = bbContents[bbDiv.dataset.contentIdx];
       if (content.type == BoundingBoxType.TEXT) {
         aTextContent.push(content.textContent);
-        aTextContentIndex.push(parseInt(bbDiv.dataset.contentIdx));
+        aTextContentIndex.push(textIndex++);
       } else {
         aGraphicsContent.push(content);
+      }
+    }, function(bb, index) {
+      var bbDiv = bbDivs[index];
+      var content = bbContents[bbDiv.dataset.contentIdx];
+      if (content.type == BoundingBoxType.TEXT) {
+        textIndex++;
       }
     });
     var aTextContentConcat = [];

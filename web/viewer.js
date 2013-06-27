@@ -2626,7 +2626,8 @@ var PageView = function pageView(container, id, scale,
     div.appendChild(bbLayerDiv);
     
     var bbLayer = this.bbLayer =
-          bbLayerDiv ? new BoundingBoxLayerBuilder(bbLayerDiv, this.id - 1) : null;
+          bbLayerDiv ? new BoundingBoxLayerBuilder(bbLayerDiv, this.id - 1, canvas.width, canvas.height)
+                     : null;
 
     if (outputScale.scaled) {
       var cssScale = 'scale(' + (1 / outputScale.sx) + ', ' +
