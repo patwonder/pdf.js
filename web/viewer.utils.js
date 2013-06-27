@@ -208,7 +208,74 @@ var Utils = {
     }
   },
   
+  CharType: {
+    ALPHABET: 0,
+    NUMBER: 1,
+    LEFT_ASSOC_PUNCTUATION: 2,
+    RIGHT_ASSOC_PUNCTUATION: 3,
+    CJK: 4,
+    HYPHEN: 5,
+    OTHER: 6
+  },
+  
+  leftAssocPunctuations: ",.;!?:)]}",
+  rightAssocPunctuations: "([{",
+  
+  cjkRanges: [
+    [0x3400, 0x4DB5],
+    [0x4E00, 0x9FA5],
+    [0x9FA6, 0x9FBB],
+    [0xF900, 0xFA2D],
+    [0xFA30, 0xFA6A],
+    [0xFA70, 0xFAD9],
+    [0x20000, 0x2A6D6],
+    [0x2F800, 0x2FA1D]
+  ],
+  
+  getCharType: function(code) {
+    var CT = Utils.CharType;
+    if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122))
+      return CT.ALPHABET;
+    if (code >= 48 && code <= 57)
+      return CT.NUMBER;
+    if (code === 45)
+      return CT.HYPHEN;
+    var ranges = Utils.cjkRanges;
+    if (ranges.some(function(range) code >= range[0] && code <= range[1]))
+      return CT.CJK;
+    
+    var ch = String.fromCharCode(code);
+    if (Utils.leftAssocPunctuations.contains(ch))
+      return CT.LEFT_ASSOC_PUNCTUATION;
+    if (Utils.rightAssocPunctuations.contains(ch))
+      return CT.RIGHT_ASSOC_PUNCTUATION;
+    return CT.OTHER;
+  },
+  
   shouldConcatText: function(part1, part2, isSameLine) {
+    if (part1.length === 0 || part2.length === 0) return false;
+    var code1 = part1.charCodeAt(part1.length - 1);
+    var code2 = part2.charCodeAt(0);
+    var CT = Utils.CharType;
+    var ct1 = Utils.getCharType(code1);
+    var ct2 = Utils.getCharType(code2);
+    var hyphen = false;
+    if (ct1 === CT.HYPHEN) {
+      hyphen = true;
+      ct1 = part1.length >= 2 ? Utils.getCharType(part1.charCodeAt(part1.length - 2)) : CT.OTHER;
+    }
+    if (ct2 === CT.HYPEN) {
+      hyphen = true;
+      ct2 = part2.length >= 2 ? Utils.getCharType(part2.charCodeAt(1)) : CT.OTHER;
+    }
+    if (ct1 === CT.OTHER || ct2 === CT.OTHER)
+      return false;
+    if (hyphen) {
+      return ct1 === CT.ALPHABET && ct2 === CT.ALPHABET;
+    }
+    if (ct1 === CT.RIGHT_ASSOC_PUNCTUATION || ct2 === CT.LEFT_ASSOC_PUNCTUATION)
+      return true;
+    if (ct1 === CT.CJK && ct2 === CT.CJK) return true;
     return false;
   },
 };

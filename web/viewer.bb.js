@@ -366,12 +366,14 @@ BoundingBoxLayerBuilder.prototype = {
     var bbDivs = this.bbDivs;
     var bbContents = this.bbContents;
     var aTextContent = [];
+    var aTextContentIndex = [];
     var aGraphicsContent = [];
     this._detectIntersectedBBs(function(bb, index) {
       var bbDiv = bbDivs[index];
       var content = bbContents[bbDiv.dataset.contentIdx];
       if (content.type == BoundingBoxType.TEXT) {
         aTextContent.push(content.textContent);
+        aTextContentIndex.push(parseInt(bbDiv.dataset.contentIdx));
       } else {
         aGraphicsContent.push(content);
       }
@@ -380,12 +382,15 @@ BoundingBoxLayerBuilder.prototype = {
     if (aTextContent.length) {
       aTextContentConcat.push(aTextContent[0]);
       var last = aTextContent[0];
+      var lastIndex = aTextContentIndex[0];
       for (var i = 1, l = aTextContent.length; i < l; i++) {
         var current = aTextContent[i];
-        if (!Utils.shouldConcatText(last, current))
+        var currentIndex = aTextContentIndex[i];
+        if (lastIndex + 1 !== currentIndex || !Utils.shouldConcatText(last, current, false))
           aTextContentConcat.push(" ");
         aTextContentConcat.push(current);
         last = current;
+        lastIndex = currentIndex;
       }
     }
     var output = {
