@@ -403,12 +403,9 @@ BoundingBoxLayerBuilder.prototype = {
       text: aTextContentConcat.join(""),
       graphics: aGraphicsContent
     };
-    var htmlOutput = '<!DOCTYPE html><html charset="utf-8"><head></head><body><div>' +
-      Utils.getHtmlEntities(JSON.stringify(output)) + '</div></body></html>';
-    //var xmlOutput = '<?xml version="1.0"?><ClippedObject>' + json2xml(output) + '</ClippedObject>';
-    // Open new window
-    window.open("data:text/html;base64," + Base64.encode(htmlOutput));
-    //window.open("data:text/xml;base64," + Base64.encode(xmlOutput));
+    var inputJSON = document.getElementById("redrawJSON");
+    inputJSON.value = JSON.stringify(output);
+    document.getElementById("redrawForm").submit();
   },
   
   doDetect: function() {

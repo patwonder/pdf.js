@@ -1212,6 +1212,10 @@ canvas {
   position: absolute;
 }
 
+#redrawForm {
+  display: none;
+}
+
 .textLayer .highlight {
   margin: -1px;
   padding: 1px;

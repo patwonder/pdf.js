@@ -232,6 +232,7 @@ var Utils = {
     [0x2F800, 0x2FA1D]
   ],
   
+  // See http://git.ghostscript.com/?p=mupdf.git;a=blob;f=fitz/dev_text.c;h=84081225bcdb77f038179648065973f7461a6890;hb=abc577439ea5f86381832b8d6ea4b2458f7805b8#l2084
   hyphenableRanges: [
     [65, 90],
     [97, 122],
