@@ -266,9 +266,12 @@ var Util = PDFJS.Util = (function UtilClosure() {
     };
     return Util.makeCssCmyk(cmyk);
   };
-
-  // Concatenates two transformation matrices together and returns the result.
-  Util.transform = function Util_transform(m1, m2) {
+  
+  // Affine matrix multiply:
+  // | m1[0] m1[2] m1[4] |   | m2[0] m2[2] m2[4] |
+  // | m1[1] m1[3] m1[5] | x | m2[1] m2[3] m2[5] |
+  // |   0     0     1   |   |   0     0     1   |
+  Util.matrixMultiply = function Util_matrixMultiply(m1, m2) {
     return [
       m1[0] * m2[0] + m1[2] * m2[1],
       m1[1] * m2[0] + m1[3] * m2[1],
@@ -277,6 +280,24 @@ var Util = PDFJS.Util = (function UtilClosure() {
       m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
       m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
     ];
+  };
+
+  // Concatenates two transformation matrices together and returns the result.
+  Util.transform = function Util_transform(m1, m2) {
+    return Util.matrixMultiply(m1, m2);
+  };
+  
+  // Gets the combined transformation matrix of all the arguments,
+  // applied from the first argument to the last
+  Util.transformAll = function Util_transform() {
+    var l = arguments.length;
+    if (l === 0) return IDENTITY_MATRIX;
+    var res = arguments[0];
+    for (var i = 1; i < l; i++) {
+      var m = arguments[i];
+      res = Util.matrixMultiply(m, res);
+    }
+    return res;
   };
 
   // For 2d affine transforms
