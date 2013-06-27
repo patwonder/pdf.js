@@ -386,8 +386,14 @@ BoundingBoxLayerBuilder.prototype = {
       for (var i = 1, l = aTextContent.length; i < l; i++) {
         var current = aTextContent[i];
         var currentIndex = aTextContentIndex[i];
-        if (lastIndex + 1 !== currentIndex || !Utils.shouldConcatText(last, current, false))
+        var concat;
+        if (lastIndex + 1 !== currentIndex || !(concat = Utils.shouldConcatText(last, current, false)))
           aTextContentConcat.push(" ");
+        if (concat === "dehyphen") {
+          var dehyphened = Utils.dehyphenate(last, current);
+          aTextContentConcat[aTextContentConcat.length - 1] = dehyphened.part1;
+          current = dehyphened.part2;
+        }
         aTextContentConcat.push(current);
         last = current;
         lastIndex = currentIndex;

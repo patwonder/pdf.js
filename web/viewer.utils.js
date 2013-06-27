@@ -209,7 +209,7 @@ var Utils = {
   },
   
   CharType: {
-    ALPHABET: 0,
+    HYPHENABLE: 0,
     NUMBER: 1,
     LEFT_ASSOC_PUNCTUATION: 2,
     RIGHT_ASSOC_PUNCTUATION: 3,
@@ -232,16 +232,51 @@ var Utils = {
     [0x2F800, 0x2FA1D]
   ],
   
+  hyphenableRanges: [
+    [65, 90],
+    [97, 122],
+    [0x00C0, 0x00D6],
+    [0x00D8, 0x00F6],
+    [0x00F8, 0x02AF],
+    [0x1D00, 0x1DBF],
+    [0x1E00, 0x1EFF],
+    [0x2C60, 0x2C7F],
+    [0xA722, 0xA78E],
+    [0xA790, 0xA793],
+    [0xA7A8, 0xA7AF],
+    [0xFB00, 0xFB07],
+    [0xFF21, 0xFF3A],
+    [0xFF41, 0xFF5A]
+  ],
+  
+  inRanges: function(code, ranges) {
+    if (code < ranges[0][0] || code > ranges[ranges.length - 1][1])
+      return false;
+    return ranges.some(function(range) code >= range[0] && code <= range[1])
+  },
+  
+  isHyphen: function(code) {
+    // We omit 0x2011 (Non breaking hyphen) and 0x2043 (Hyphen Bullet)
+    // from this list.
+    return (code === 45
+         || code === 0x2010 /* Hyphen */
+         || code === 0x002d /* Hyphen-Minus */
+         || code === 0x00ad /* Soft hyphen */
+         || code === 0x058a /* Armenian Hyphen */
+         || code === 0x1400 /* Canadian Syllabive Hyphen */
+         || code === 0x1806 /* Mongolian Todo soft hyphen */
+    );
+  },
+  
   getCharType: function(code) {
     var CT = Utils.CharType;
-    if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122))
-      return CT.ALPHABET;
+    if (Utils.inRanges(code, Utils.hyphenableRanges))
+      return CT.HYPHENABLE;
     if (code >= 48 && code <= 57)
       return CT.NUMBER;
-    if (code === 45)
+    if (Utils.isHyphen(code))
       return CT.HYPHEN;
-    var ranges = Utils.cjkRanges;
-    if (ranges.some(function(range) code >= range[0] && code <= range[1]))
+    if (Utils.inRanges(code, Utils.cjkRanges))
       return CT.CJK;
     
     var ch = String.fromCharCode(code);
@@ -252,6 +287,12 @@ var Utils = {
     return CT.OTHER;
   },
   
+  /**
+   * Whether we should concat the text
+   *  true: concat directly
+   *  false: concat with space " "
+   *  "dehyphen": concat dehyphened
+   */
   shouldConcatText: function(part1, part2, isSameLine) {
     if (part1.length === 0 || part2.length === 0) return false;
     var code1 = part1.charCodeAt(part1.length - 1);
@@ -264,18 +305,33 @@ var Utils = {
       hyphen = true;
       ct1 = part1.length >= 2 ? Utils.getCharType(part1.charCodeAt(part1.length - 2)) : CT.OTHER;
     }
-    if (ct2 === CT.HYPEN) {
+    if (ct2 === CT.HYPHEN) {
       hyphen = true;
       ct2 = part2.length >= 2 ? Utils.getCharType(part2.charCodeAt(1)) : CT.OTHER;
     }
     if (ct1 === CT.OTHER || ct2 === CT.OTHER)
       return false;
     if (hyphen) {
-      return ct1 === CT.ALPHABET && ct2 === CT.ALPHABET;
+      return ct1 === CT.HYPHENABLE && ct2 === CT.HYPHENABLE ? "dehyphen" : false;
     }
     if (ct1 === CT.RIGHT_ASSOC_PUNCTUATION || ct2 === CT.LEFT_ASSOC_PUNCTUATION)
       return true;
     if (ct1 === CT.CJK && ct2 === CT.CJK) return true;
     return false;
+  },
+  
+  dehyphenate: function(part1, part2) {
+    var code1 = part1.charCodeAt(part1.length - 1);
+    var code2 = part2.charCodeAt(0);
+    var CT = Utils.CharType;
+    var ct1 = Utils.getCharType(code1);
+    var ct2 = Utils.getCharType(code2);
+    if (ct1 === CT.HYPHEN) {
+      part1 = part1.substring(0, part1.length - 1);
+    }
+    if (ct2 === CT.HYPHEN) {
+      part2 = part2.substring(1);
+    }
+    return { part1: part1, part2: part2 };
   },
 };
