@@ -209,6 +209,6 @@ var Utils = {
   },
   
   shouldConcatText: function(part1, part2, isSameLine) {
-    
+    return false;
   },
 };

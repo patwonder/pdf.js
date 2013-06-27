@@ -8,7 +8,9 @@ var Test = (function() {
   }
 
   var Test = {
-    tests: [{ name: "Utils::shouldConcatText", func: test_Utils_shouldConcatText}],
+    tests: [
+      { name: "Utils::shouldConcatText", func: test_Utils_shouldConcatText },
+    ],
     run: function() {
       this.tests.forEach(function(test) {
         try {

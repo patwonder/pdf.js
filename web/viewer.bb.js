@@ -376,8 +376,20 @@ BoundingBoxLayerBuilder.prototype = {
         aGraphicsContent.push(content);
       }
     });
+    var aTextContentConcat = [];
+    if (aTextContent.length) {
+      aTextContentConcat.push(aTextContent[0]);
+      var last = aTextContent[0];
+      for (var i = 1, l = aTextContent.length; i < l; i++) {
+        var current = aTextContent[i];
+        if (!Utils.shouldConcatText(last, current))
+          aTextContentConcat.push(" ");
+        aTextContentConcat.push(current);
+        last = current;
+      }
+    }
     var output = {
-      text: aTextContent.join(" "),
+      text: aTextContentConcat.join(""),
       graphics: aGraphicsContent
     };
     var htmlOutput = '<!DOCTYPE html><html charset="utf-8"><head></head><body><div>' +
