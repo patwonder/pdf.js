@@ -526,9 +526,10 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
   var ctxExtraProps = ["alphaIsShape", "fontSize", "fontSizeScale", "textMatrix",
                       "fontMatrix", "leading", "x", "y", "lineX", "lineY",
                       "charSpacing", "wordSpacing", "textHScale",
-                      "textRenderingMode", "textRise", "fillColor",
-                      "strokeColor", "fillAlpha", "strokeAlpha", "lineWidth",
-                      "paintFormXObjectDepth"];
+                      "textRenderingMode", "textRise", "fillAlpha",
+                      "strokeAlpha", "lineWidth", "paintFormXObjectDepth"];
+  var ctxExtraColorProps = { "fillColor": "fillColorSpace", "strokeColor": "strokeColorSpace" };
+  
   /**
    * See http://html5.litten.com/understanding-save-and-restore-for-the-canvas-context/
    * Each context maintains a stack of drawing states. Drawing states consist of:
@@ -568,6 +569,17 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (prop in sourceExtraState)
         obj[prop] = sourceExtraState[prop];
     }
+    for (var prop in ctxExtraColorProps) {
+      var color = sourceExtraState[prop];
+      if (color.toIR) {
+        obj[prop] = color.toIR();
+      } else if (color.getIR) {
+        obj[prop] = color.getIR();
+      } else {
+        obj[prop] = color;
+      }
+    }
+    
     obj.fillColorSpace = sourceExtraState.fillColorSpace.toIR();
     obj.strokeColorSpace = sourceExtraState.strokeColorSpace.toIR();
     
@@ -594,6 +606,10 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (prop in fullState)
         extraState[prop] = fullState[prop];
     }
+    for (var prop in ctxExtraColorProps) {
+      // Keep IR, will convert to object in the setFullContextState member function
+      extraState[prop] = fullState[prop];
+    }
     extraState.fillColorSpace = ColorSpace.fromIR(fullState.fillColorSpace);
     extraState.strokeColorSpace = ColorSpace.fromIR(fullState.strokeColorSpace);
   }
@@ -616,6 +632,12 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     },
     setFullContextState: function(fullState) {
       setFullContextState(this.ctx, this.current, fullState);
+      for (var prop in ctxExtraColorProps) {
+        var csprop = ctxExtraColorProps[prop];
+        var cs = this.current[csprop];
+        if (cs.name == "Pattern")
+          this.current[prop] = this.getColorN_Pattern(this.current[prop], cs);
+      }
     },
     slowCommands: {
       'stroke': true,

@@ -36,6 +36,11 @@ var Pattern = (function PatternClosure() {
     // Output: the appropriate fillStyle or strokeStyle
     getPattern: function Pattern_getPattern(ctx) {
       error('Should not call Pattern.getStyle: ' + ctx);
+    },
+    
+    // Get the IR representation of the pattern
+    toIR: function() {
+      error("Should not call Pattern.toIR()");
     }
   };
 
@@ -206,6 +211,9 @@ Shadings.RadialAxial = (function RadialAxialClosure() {
           grad.addColorStop(c[0], c[1]);
         }
         return grad;
+      },
+      toIR: function RadialAxial_toIR() {
+        return ["RadialAxial", type, colorStops, p0, p1, r0, r1];
       }
     };
   };
@@ -251,6 +259,9 @@ Shadings.Dummy = (function DummyClosure() {
       type: 'Pattern',
       getPattern: function Dummy_fromIR_getPattern() {
         return 'hotpink';
+      },
+      toIR: function Dummy_toIR() {
+        return ["Dummy"];
       }
     };
   };
@@ -273,6 +284,7 @@ var TilingPattern = (function TilingPatternClosure() {
 
   function TilingPattern(IR, color, ctx, objs, commonObjs) {
     this.name = IR[1][0].name;
+    this.IR1 = IR[1];
     this.operatorList = IR[2];
     this.matrix = IR[3] || [1, 0, 0, 1, 0, 0];
     this.bbox = IR[4];
@@ -417,6 +429,10 @@ var TilingPattern = (function TilingPatternClosure() {
       this.scaleToContext();
 
       return ctx.createPattern(temporaryPatternCanvas, 'repeat');
+    },
+    
+    toIR: function TilingPattern_toIR() {
+      return ["TilingPattern", this.IR1, this.operatorList, this.matrix, this.bbox, this.xstep, this.ystep, this.paintType, this.tilingType];
     }
   };
 

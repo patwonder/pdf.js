@@ -7,11 +7,6 @@ var BoundingBoxType = {
   PRIMITIVE_TEXT: 4
 };
 
-var ImageSubType = {
-  JPEG: 1,
-  INLINE: 2
-};
-
 function BoundingBox(left, top, width, height) {
   this.left = left;
   this.top = top;
@@ -257,7 +252,7 @@ BoundingBoxLayerBuilder.prototype = {
     
     // Create the div for displaying the selection
     var selectionDiv = this.selectionDiv || (this.selectionDiv = document.createElement("div"));
-    selectionDiv.className = "bbLayerSelection bypassSelection";
+    selectionDiv.className = "bbLayerSelection";
     selectionDiv.style.left = selectionBB.left + "px";
     selectionDiv.style.top = selectionBB.top + "px";
     selectionDiv.style.width = selectionBB.width + "px";
@@ -326,6 +321,7 @@ BoundingBoxLayerBuilder.prototype = {
       tempBB.top += tempBB.height - 1;
       tempBB.height = -tempBB.height + 2;
     }
+    tempBB.restrict(this.canvasBB);
     return tempBB;
   },
   
