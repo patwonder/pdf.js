@@ -1969,16 +1969,21 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
       ctx.drawImage(domImage, 0, 0, domImage.width, domImage.height,
                     0, -h, w, h);
-      if (this.imageLayer) {
+      if (this.imageLayer || this.clipper) {
         var currentTransform = ctx.mozCurrentTransformInverse;
         var position = this.getCanvasPosition(0, 0);
-        this.imageLayer.appendImage({
-          objId: objId,
-          left: position[0],
-          top: position[1],
-          width: w / currentTransform[0],
-          height: h / currentTransform[3]
-        });
+        var size = { width: w / currentTransform[0], height: h / currentTransform[3] };
+        if (this.imageLayer) {
+          this.imageLayer.appendImage({
+            objId: objId,
+            left: position[0],
+            top: position[1] - size.height,
+            width: size.width,
+            height: size.height
+          });
+        }
+        if (this.clipper)
+          this.clipper.extendBoundingBox(new BoundingBox(position[0], position[1] - size.height, size.width, size.height));
       }
       this.restore();
     },
@@ -2120,15 +2125,19 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       ctx.drawImage(imgToPaint, 0, 0, paintWidth, paintHeight,
                                 0, -height, width, height);
 
-      if (this.imageLayer) {
+      if (this.imageLayer || this.clipper) {
         var position = this.getCanvasPosition(0, -height);
-        this.imageLayer.appendImage({
-          imgData: imgData,
-          left: position[0],
-          top: position[1],
-          width: width / currentTransform[0],
-          height: height / currentTransform[3]
-        });
+        if (this.imageLayer) {
+          this.imageLayer.appendImage({
+            imgData: imgData,
+            left: position[0],
+            top: position[1],
+            width: width / currentTransform[0],
+            height: height / currentTransform[3]
+          });
+        }
+        if (this.clipper)
+          this.clipper.extendBoundingBox(new BoundingBox(position[0], position[1], width / currentTransform[0], height / currentTransform[3]));
       }
       this.restore();
     },
@@ -2150,15 +2159,19 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         ctx.scale(1, -1);
         ctx.drawImage(tmpCanvas, entry.x, entry.y, entry.w, entry.h,
                       0, -1, 1, 1);
-        if (this.imageLayer) {
+        if (this.imageLayer || this.clipper) {
           var position = this.getCanvasPosition(entry.x, entry.y);
-          this.imageLayer.appendImage({
-            imgData: imgData,
-            left: position[0],
-            top: position[1],
-            width: w,
-            height: h
-          });
+          if (this.imageLayer) {
+            this.imageLayer.appendImage({
+              imgData: imgData,
+              left: position[0],
+              top: position[1],
+              width: w,
+              height: h
+            });
+          }
+          if (this.clipper)
+            this.clipper.extendBoundingBox(new BoundingBox(position[0], position[1], w, h));
         }
         ctx.restore();
       }

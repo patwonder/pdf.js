@@ -7,6 +7,11 @@ var BoundingBoxType = {
   PRIMITIVE_TEXT: 4
 };
 
+var ImageSubType = {
+  JPEG: 1,
+  INLINE: 2
+};
+
 function BoundingBox(left, top, width, height) {
   this.left = left;
   this.top = top;
@@ -83,7 +88,7 @@ BoundingBox.fromElement = function(element, bbLayerDiv) {
   return new BoundingBox(pos.left, pos.top, element.offsetWidth, element.offsetHeight);
 };
 
-function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height) {
+function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height, viewport) {
   this._bbLayerFrag = document.createDocumentFragment();
   
   this.bbLayerDiv = bbLayerDiv;
@@ -93,6 +98,7 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height) {
   this.isSelecting = false;
   this.selectionBB = new BoundingBox(0, 0, 0, 0);
   this.canvasBB = new BoundingBox(0, 0, width, height);
+  this.viewport = viewport;
 }
 
 BoundingBoxLayerBuilder.isBBVisible = function(bb) {
@@ -371,6 +377,7 @@ BoundingBoxLayerBuilder.prototype = {
     var aTextContentIndex = [];
     var aGraphicsContent = [];
     var textIndex = 0;
+    var combinedBoundingBox = null;
     this._detectIntersectedBBs(function(bb, index) {
       var bbDiv = bbDivs[index];
       var content = bbContents[bbDiv.dataset.contentIdx];
@@ -379,6 +386,10 @@ BoundingBoxLayerBuilder.prototype = {
         aTextContentIndex.push(textIndex++);
       } else {
         aGraphicsContent.push(content);
+        if (combinedBoundingBox)
+          combinedBoundingBox.extendBoundingBox(bb);
+        else
+          combinedBoundingBox = bb.clone();
       }
     }, function(bb, index) {
       var bbDiv = bbDivs[index];
@@ -409,6 +420,8 @@ BoundingBoxLayerBuilder.prototype = {
       }
     }
     var output = {
+      viewport: this.viewport,
+      boundingBox: combinedBoundingBox,
       text: aTextContentConcat.join(""),
       graphics: aGraphicsContent
     };

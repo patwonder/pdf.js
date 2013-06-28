@@ -14,6 +14,8 @@
     <script src="redraw.js"></script>
   </head>
   <body>
+    <div id="boundingBox"></div>
+    <div id="viewport"></div>
     <div id="text"></div>
     <div id="graphics"></div>
   </body>
