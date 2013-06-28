@@ -102,7 +102,20 @@ BoundingBoxLayerBuilder.isBBVisible = function(bb) {
   var width = Math.abs(bb.width - 1) + 1;
   var height = Math.abs(bb.height - 1) + 1;
   return width >= MIN_BB_SELECTION_WIDTH && height >= MIN_BB_SELECTION_HEIGHT;
-}
+};
+
+BoundingBoxLayerBuilder.removeDependency = function(content) {
+  if (!content.dependency)
+    return content;
+
+  var newContent = {};
+  for (var prop in content) {
+    if (prop != "dependency") {
+      newContent[prop] = content[prop];
+    }
+  }
+  return newContent;
+};
 
 BoundingBoxLayerBuilder.analyzeDependency = function(content, dependency) {
   if (content.dependency) {
@@ -114,7 +127,7 @@ BoundingBoxLayerBuilder.analyzeDependency = function(content, dependency) {
       dependency.images[image] = true;
     }
   }
-}
+};
 
 BoundingBoxLayerBuilder.getDependencyArray = function(dependency) {
   var res = { fonts: [], images: [] };
@@ -125,7 +138,7 @@ BoundingBoxLayerBuilder.getDependencyArray = function(dependency) {
     res.images.push(image);
   }
   return res;
-}
+};
 
 BoundingBoxLayerBuilder.prototype = {
   beginLayout: function() {
@@ -408,7 +421,7 @@ BoundingBoxLayerBuilder.prototype = {
         aTextContent.push(content.textContent);
         aTextContentIndex.push(textIndex++);
       } else {
-        aGraphicsContent.push(content);
+        aGraphicsContent.push(BoundingBoxLayerBuilder.removeDependency(content));
         if (combinedBoundingBox)
           combinedBoundingBox.extendBoundingBox(bb);
         else

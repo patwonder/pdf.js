@@ -34,7 +34,6 @@ var ObjectClipper = (function ObjectClipper_closure() {
       this.stateStack = [state];
       this.stackptr = 0;
       this.commandList = [];
-      this.dependency = null;
     },
     
     addCommand: function(command) {
@@ -72,21 +71,6 @@ var ObjectClipper = (function ObjectClipper_closure() {
       this.boundingBox.restrict(this.outerBoundingBox);
     },
     
-    _getDependency: function() {
-      return this.dependency || (this.dependency = {
-        fonts: { __proto__: null },
-        images: { __proto__: null }
-      });
-    },
-    
-    addFontDependency: function(refName) {
-      this._getDependency().fonts[refName] = true;
-    },
-    
-    addImageDependency: function(refName) {
-      this._getDependency().images[refName] = true;
-    },
-    
     onSave: function() {
       this.stackptr++;
     },
@@ -101,6 +85,35 @@ var ObjectClipper = (function ObjectClipper_closure() {
   };
   
   return ObjectClipper;
+})();
+
+var DepAnalyzer = (function DepAnalyzer_closure() {
+  function DepAnalyzer() {
+    this.reset();
+  };
+  
+  DepAnalyzer.prototype = {
+    reset: function() {
+      this.dependency = null;
+    },
+    
+    _getDependency: function() {
+      return this.dependency || (this.dependency = {
+        fonts: { __proto__: null },
+        images: { __proto__: null }
+      });
+    },
+    
+    addFontDependency: function(refName) {
+      this._getDependency().fonts[refName] = true;
+    },
+    
+    addImageDependency: function(refName) {
+      this._getDependency().images[refName] = true;
+    },
+  };
+  
+  return DepAnalyzer;
 })();
 
 // <canvas> contexts store most of the state we need natively.
@@ -794,8 +807,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         stateStack: clipper.stateStack,
         commands: clipper.commandList
       };
-      if (clipper.dependency)
-        content.dependency = clipper.dependency;
+      if (this.depAnalyzer.dependency)
+        content.dependency = this.depAnalyzer.dependency;
       bbLayer.appendBoundingBox(clipper.boundingBox, content);
     },
 
@@ -827,6 +840,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (this.bbLayer) {
         this.bbLayer.beginLayout();
         this.clipper = new ObjectClipper(null);
+        this.depAnalyzer = new DepAnalyzer();
       }
       if (this.imageLayer) {
         this.imageLayer.beginLayout();
@@ -866,8 +880,10 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         fnName = fnArray[i];
 
         if (this.clipper && (this.clipper.commandList.length != 0 || !stateCommands[fnName])) {
-          if (this.clipper.commandList.length == 0)
+          if (this.clipper.commandList.length == 0) {
             this.clipper.reset(this.getFullContextState());
+            this.depAnalyzer.reset();
+          }
           this.clipper.addCommand({ name: fnName, args: argsArray[i] });
         }
         
@@ -898,6 +914,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             if (this.current.paintFormXObjectDepth == 0) {
               this.recordObject(termCommands[fnName]);
               this.clipper.reset(null);
+              this.depAnalyzer.reset();
             }
           }
         }
@@ -1130,7 +1147,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         // for patterns, we transform to pattern space, calculate
         // the pattern, call stroke, and restore to user space
         ctx.save();
-        ctx.strokeStyle = strokeColor.getPattern(ctx);
+        ctx.strokeStyle = strokeColor.getPattern(ctx, this.depAnalyzer);
         ctx.stroke();
         ctx.restore();
       } else {
@@ -1154,7 +1171,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (fillColor && fillColor.hasOwnProperty('type') &&
           fillColor.type === 'Pattern') {
         ctx.save();
-        ctx.fillStyle = fillColor.getPattern(ctx);
+        ctx.fillStyle = fillColor.getPattern(ctx, this.depAnalyzer);
         needRestore = true;
       }
 
@@ -1595,11 +1612,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           });
           if (this.clipper) {
             this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
-                  if (this.clipper)
-            this.clipper.addFontDependency(this.current.fontRefName);
           }
         }
       }
+      if (this.depAnalyzer)
+        this.depAnalyzer.addFontDependency(this.current.fontRefName);
 
       return canvasWidth;
     },
@@ -1672,10 +1689,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           });
           if (this.clipper) {
             this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
-            this.clipper.addFontDependency(this.current.fontRefName);
           }
         }
       }
+      if (this.depAnalyzer)
+        this.depAnalyzer.addFontDependency(this.current.fontRefName);
     },
     nextLineShowText: function CanvasGraphics_nextLineShowText(text) {
       this.nextLine();
@@ -1824,7 +1842,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
       this.save();
       var pattern = Pattern.shadingFromIR(patternIR);
-      ctx.fillStyle = pattern.getPattern(ctx);
+      ctx.fillStyle = pattern.getPattern(ctx, this.depAnalyzer);
 
       var inv = ctx.mozCurrentTransformInverse;
       if (inv) {
@@ -2010,8 +2028,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         error('Dependent image isn\'t ready yet');
       }
       
-      if (this.clipper)
-        this.clipper.addImageDependency(objId);
+      if (this.depAnalyzer)
+        this.depAnalyzer.addImageDependency(objId);
 
       this.save();
 
@@ -2072,7 +2090,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var fillColor = this.current.fillColor;
       maskCtx.fillStyle = (fillColor && fillColor.hasOwnProperty('type') &&
                           fillColor.type === 'Pattern') ?
-                          fillColor.getPattern(maskCtx) : fillColor;
+                          fillColor.getPattern(maskCtx, this.depAnalyzer) : fillColor;
       maskCtx.fillRect(0, 0, width, height);
 
       maskCtx.restore();
@@ -2099,7 +2117,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         var fillColor = this.current.fillColor;
         maskCtx.fillStyle = (fillColor && fillColor.hasOwnProperty('type') &&
                             fillColor.type === 'Pattern') ?
-                            fillColor.getPattern(maskCtx) : fillColor;
+                            fillColor.getPattern(maskCtx, this.depAnalyzer) : fillColor;
         maskCtx.fillRect(0, 0, width, height);
 
         maskCtx.restore();
@@ -2118,8 +2136,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (!imgData)
         error('Dependent image isn\'t ready yet');
       
-      if (this.clipper)
-        this.clipper.addImageDependency(objId);
+      if (this.depAnalyzer)
+        this.depAnalyzer.addImageDependency(objId);
         
       this.paintInlineImageXObject(imgData);
     },

@@ -34,8 +34,8 @@ var Pattern = (function PatternClosure() {
   Pattern.prototype = {
     // Input: current Canvas context
     // Output: the appropriate fillStyle or strokeStyle
-    getPattern: function Pattern_getPattern(ctx) {
-      error('Should not call Pattern.getStyle: ' + ctx);
+    getPattern: function Pattern_getPattern(ctx, depAnalyzer) {
+      error('Should not call Pattern.getPattern: ' + ctx + ", " + depAnalyzer);
     },
     
     // Get the IR representation of the pattern
@@ -315,7 +315,7 @@ var TilingPattern = (function TilingPatternClosure() {
   };
 
   TilingPattern.prototype = {
-    createPatternCanvas: function TilinPattern_createPatternCanvas(tmpCanvas) {
+    createPatternCanvas: function TilinPattern_createPatternCanvas(tmpCanvas, depAnalyzer) {
       var operatorList = this.operatorList;
       var bbox = this.bbox;
       var xstep = this.xstep;
@@ -360,6 +360,7 @@ var TilingPattern = (function TilingPatternClosure() {
       // set the new canvas element context as the graphics context
       var tmpCtx = tmpCanvas.getContext('2d');
       var graphics = new CanvasGraphics(tmpCtx, commonObjs, objs);
+      graphics.depAnalyzer = depAnalyzer;
 
       this.setFillAndStrokeStyleToContext(tmpCtx, paintType, color);
 
@@ -419,9 +420,9 @@ var TilingPattern = (function TilingPatternClosure() {
       }
     },
 
-    getPattern: function TilingPattern_getPattern() {
+    getPattern: function TilingPattern_getPattern(ctx, depAnalyzer) {
       var temporaryPatternCanvas = CachedCanvases.getCanvas('pattern');
-      this.createPatternCanvas(temporaryPatternCanvas);
+      this.createPatternCanvas(temporaryPatternCanvas, depAnalyzer);
 
       var ctx = this.ctx;
       ctx.setTransform.apply(ctx, this.curMatrix);
