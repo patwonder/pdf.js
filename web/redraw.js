@@ -5,6 +5,7 @@
   w.addEventListener("DOMContentLoaded", function() {
     E("boundingBox").textContent = JSON.stringify(obj.boundingBox);
     E("viewport").textContent = JSON.stringify(obj.viewport);
+    E("dependency").textContent = JSON.stringify(obj.dependency);
     E("text").textContent = obj.text;
     E("graphics").textContent = JSON.stringify(obj.graphics);
   }, false);

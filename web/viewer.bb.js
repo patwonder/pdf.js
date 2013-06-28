@@ -104,6 +104,29 @@ BoundingBoxLayerBuilder.isBBVisible = function(bb) {
   return width >= MIN_BB_SELECTION_WIDTH && height >= MIN_BB_SELECTION_HEIGHT;
 }
 
+BoundingBoxLayerBuilder.analyzeDependency = function(content, dependency) {
+  if (content.dependency) {
+    var dep = content.dependency;
+    for (var font in dep.fonts) {
+      dependency.fonts[font] = true;
+    }
+    for (var image in dep.images) {
+      dependency.images[image] = true;
+    }
+  }
+}
+
+BoundingBoxLayerBuilder.getDependencyArray = function(dependency) {
+  var res = { fonts: [], images: [] };
+  for (var font in dependency.fonts) {
+    res.fonts.push(font);
+  }
+  for (var image in dependency.images) {
+    res.images.push(image);
+  }
+  return res;
+}
+
 BoundingBoxLayerBuilder.prototype = {
   beginLayout: function() {
     this.bbDivs = [];
@@ -374,6 +397,10 @@ BoundingBoxLayerBuilder.prototype = {
     var aGraphicsContent = [];
     var textIndex = 0;
     var combinedBoundingBox = null;
+    var dependency = {
+      fonts: {},
+      images: {}
+    };
     this._detectIntersectedBBs(function(bb, index) {
       var bbDiv = bbDivs[index];
       var content = bbContents[bbDiv.dataset.contentIdx];
@@ -386,6 +413,7 @@ BoundingBoxLayerBuilder.prototype = {
           combinedBoundingBox.extendBoundingBox(bb);
         else
           combinedBoundingBox = bb.clone();
+        BoundingBoxLayerBuilder.analyzeDependency(content, dependency);
       }
     }, function(bb, index) {
       var bbDiv = bbDivs[index];
@@ -418,6 +446,7 @@ BoundingBoxLayerBuilder.prototype = {
     var output = {
       viewport: this.viewport,
       boundingBox: combinedBoundingBox,
+      dependency: BoundingBoxLayerBuilder.getDependencyArray(dependency),
       text: aTextContentConcat.join(""),
       graphics: aGraphicsContent
     };

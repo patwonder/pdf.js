@@ -16,6 +16,7 @@
   <body>
     <div id="boundingBox"></div>
     <div id="viewport"></div>
+    <div id="dependency"></div>
     <div id="text"></div>
     <div id="graphics"></div>
   </body>

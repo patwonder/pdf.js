@@ -34,6 +34,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
       this.stateStack = [state];
       this.stackptr = 0;
       this.commandList = [];
+      this.dependency = null;
     },
     
     addCommand: function(command) {
@@ -69,6 +70,21 @@ var ObjectClipper = (function ObjectClipper_closure() {
     
     restrictBoundingBox: function() {
       this.boundingBox.restrict(this.outerBoundingBox);
+    },
+    
+    _getDependency: function() {
+      return this.dependency || (this.dependency = {
+        fonts: { __proto__: null },
+        images: { __proto__: null }
+      });
+    },
+    
+    addFontDependency: function(refName) {
+      this._getDependency().fonts[refName] = true;
+    },
+    
+    addImageDependency: function(refName) {
+      this._getDependency().images[refName] = true;
     },
     
     onSave: function() {
@@ -407,6 +423,7 @@ var CanvasExtraState = (function CanvasExtraStateClosure() {
   function CanvasExtraState(old) {
     // Are soft masks and alpha values shapes or opacities?
     this.alphaIsShape = false;
+    this.fontRefName = null;
     this.fontSize = 0;
     this.fontSizeScale = 1;
     this.textMatrix = IDENTITY_MATRIX;
@@ -527,7 +544,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
                       "fontMatrix", "leading", "x", "y", "lineX", "lineY",
                       "charSpacing", "wordSpacing", "textHScale",
                       "textRenderingMode", "textRise", "fillAlpha",
-                      "strokeAlpha", "lineWidth", "paintFormXObjectDepth"];
+                      "strokeAlpha", "lineWidth", "paintFormXObjectDepth",
+                      "fontRefName"];
   var ctxExtraColorProps = { "fillColor": "fillColorSpace", "strokeColor": "strokeColorSpace" };
   
   /**
@@ -771,11 +789,14 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         bbtype = BoundingBoxType.PRIMITIVE;
         break;
       }
-      bbLayer.appendBoundingBox(clipper.boundingBox, {
+      var content = {
         type: bbtype,
         stateStack: clipper.stateStack,
         commands: clipper.commandList
-      });
+      };
+      if (clipper.dependency)
+        content.dependency = clipper.dependency;
+      bbLayer.appendBoundingBox(clipper.boundingBox, content);
     },
 
     beginDrawing: function CanvasGraphics_beginDrawing(viewport, transparency) {
@@ -1267,8 +1288,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       }
 
       this.current.font = fontObj;
+      this.current.fontRefName = fontRefName;
       this.current.fontSize = size;
-
+      
       if (fontObj.coded)
         return; // we don't need ctx.font for Type3 fonts
 
@@ -1571,8 +1593,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             textContent: null, // we'll set it later through setTextContent
             hide: false
           });
-          if (this.clipper)
+          if (this.clipper) {
             this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
+                  if (this.clipper)
+            this.clipper.addFontDependency(this.current.fontRefName);
+          }
         }
       }
 
@@ -1645,8 +1670,10 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             textContent: null, // we'll set it later through setTextContent
             hide: false
           });
-          if (this.clipper)
+          if (this.clipper) {
             this.clipper.extendBoundingBox(BoundingBox.fromGeometry(geom));
+            this.clipper.addFontDependency(this.current.fontRefName);
+          }
         }
       }
     },
@@ -1982,6 +2009,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (!domImage) {
         error('Dependent image isn\'t ready yet');
       }
+      
+      if (this.clipper)
+        this.clipper.addImageDependency(objId);
 
       this.save();
 
@@ -2087,7 +2117,10 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var imgData = this.objs.get(objId);
       if (!imgData)
         error('Dependent image isn\'t ready yet');
-
+      
+      if (this.clipper)
+        this.clipper.addImageDependency(objId);
+        
       this.paintInlineImageXObject(imgData);
     },
 
