@@ -178,6 +178,20 @@
        "rounds": 1,
        "type": "eq"
     },
+    {  "id": "taro-text",
+       "file": "pdfs/TaroUTR50SortedList112.pdf",
+       "md5": "ce63eab622ff473a43f8a8de85ef8a46",
+       "link":true,
+       "rounds": 1,
+       "lastPage": 4,
+       "type": "text"
+    },
+    {  "id": "rotated-text",
+       "file": "pdfs/rotated.pdf",
+       "md5": "aed187f53e969ccdcbab0bb4c59f9e46",
+       "rounds": 1,
+       "type": "text"
+    },
     {
       "id": "issue3115",
       "file": "pdfs/issue3115.pdf",
@@ -263,6 +277,13 @@
        "link": true,
        "rounds": 1,
        "type": "eq"
+    },
+    {  "id": "issue3371",
+       "file": "pdfs/issue3371.pdf",
+       "password": "ELXRTQWS",
+       "md5": "db2fedbd36d6fa27d4e52f9bd2d96b8c",
+       "rounds": 1,
+       "type": "load"
     },
     {  "id": "wdsg_fitc",
        "file": "pdfs/wdsg_fitc.pdf",
@@ -678,6 +699,14 @@
       "link": true,
       "type": "eq"
     },
+    {  "id": "bug867484",
+      "file": "pdfs/bug867484.pdf",
+      "md5": "347af7b0ef7279b1a7f43b03bfda4548",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
+      "type": "load"
+    },
     {  "id": "issue1466",
       "file": "pdfs/issue1466.pdf",
       "md5": "8a8877432e5bb10cfd50d60488d947bb",
@@ -1088,6 +1117,15 @@
       "type": "eq",
       "about": "Has a 4 bit per component image with mask and decode."
     },
+    {  "id": "issue2984",
+      "file": "pdfs/issue2984.pdf",
+      "md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "rounds": 1,
+      "link": true,
+      "type": "eq",
+      "lastPage": 1,
+      "about": "Type3 fonts with lots of switching between them."
+    },
     {  "id": "bug808084",
       "file": "pdfs/bug808084.pdf",
       "md5": "b1c400de699af29ea3f1983bb26870ab",
@@ -1103,6 +1141,15 @@
       "link": true,
       "type": "eq",
       "about": "True type font with encoding dict with no base encoding but with differences."
+    },
+    {  "id": "bug878194",
+       "file": "pdfs/bug878194.pdf",
+       "md5": "c616b21fd2a1a65acc2de0f41e59a8b5",
+       "link": "true",
+       "rounds": 1,
+       "firstPage": 4,
+       "lastPage": 4,
+       "type": "load"
     },
     {  "id": "p020121130574743273239",
       "file": "pdfs/P020121130574743273239.pdf",
@@ -1127,6 +1174,13 @@
       "md5": "8a74d33504701edcefeef2afd022765e",
       "rounds": 1,
       "type": "eq"
+    },
+    {  "id": "bug886717",
+      "file": "pdfs/bug886717.pdf",
+      "md5": "8ba614192797a1324765610231a1bc9d",
+      "rounds": 1,
+      "type": "load",
+      "about": "Annotation that has no resources."
     },
     {  "id": "issue3263",
       "file": "pdfs/issue3263.pdf",
@@ -1168,10 +1222,23 @@
       "rounds": 1,
       "type": "eq"
     },
+    {  "id": "bug766138",
+      "file": "pdfs/bug766138.pdf",
+      "md5": "b171f5cf8d9834348112fba60ee54f8c",
+      "link": true,
+      "rounds": 1,
+      "type": "eq"
+    },
     {  "id": "issue2829",
       "file": "pdfs/issue2829.pdf",
       "md5": "f32b28cf8792f6ccc470446bfbb38584",
       "link": true,
+      "rounds": 1,
+      "type": "eq"
+    },
+    {  "id": "issue2956",
+      "file": "pdfs/issue2956.pdf",
+      "md5": "d8f68cbbb4bf54cde9f7f878acb6d7cd",
       "rounds": 1,
       "type": "eq"
     },
@@ -1180,5 +1247,14 @@
       "md5": "48a808278bf31de8414c4e03ecd0900a",
       "rounds": 1,
       "type": "eq"
+    },
+    {  "id": "issue3384",
+       "file": "pdfs/issue3384.pdf",
+       "md5": "57e31e83c165f16609528ad5ec5825ba",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 1,
+       "lastPage": 1,
+       "type": "eq"
     }
 ]

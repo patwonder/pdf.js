@@ -57,6 +57,11 @@ var Stream = (function StreamClosure() {
       this.pos = end;
       return bytes.subarray(pos, end);
     },
+    peekBytes: function Stream_peekBytes(length) {
+      var bytes = this.getBytes(length);
+      this.pos -= bytes.length;
+      return bytes;
+    },
     lookChar: function Stream_lookChar() {
       if (this.pos >= this.end)
         return null;
@@ -160,6 +165,11 @@ var DecodeStream = (function DecodeStreamClosure() {
 
       this.pos = end;
       return this.buffer.subarray(pos, end);
+    },
+    peekBytes: function DecodeStream_peekBytes(length) {
+      var bytes = this.getBytes(length);
+      this.pos -= bytes.length;
+      return bytes;
     },
     lookChar: function DecodeStream_lookChar() {
       var pos = this.pos;
@@ -494,8 +504,11 @@ var FlateStream = (function FlateStreamClosure() {
       if (typeof (b = bytes[bytesPos++]) == 'undefined')
         error('Bad block header in flate stream');
       check |= (b << 8);
-      if (check != (~blockLen & 0xffff))
+      if (check != (~blockLen & 0xffff) &&
+          (blockLen !== 0 || check !== 0)) {
+        // Ignoring error for bad "empty" block (see issue 1277)
         error('Bad uncompressed block length in flate stream');
+      }
 
       this.codeBuf = 0;
       this.codeSize = 0;
@@ -1056,6 +1069,8 @@ var DecryptStream = (function DecryptStreamClosure() {
     this.str = str;
     this.dict = str.dict;
     this.decrypt = decrypt;
+    this.nextChunk = null;
+    this.initialized = false;
 
     DecodeStream.call(this);
   }
@@ -1065,13 +1080,22 @@ var DecryptStream = (function DecryptStreamClosure() {
   DecryptStream.prototype = Object.create(DecodeStream.prototype);
 
   DecryptStream.prototype.readBlock = function DecryptStream_readBlock() {
-    var chunk = this.str.getBytes(chunkSize);
+    var chunk;
+    if (this.initialized) {
+      chunk = this.nextChunk;
+    } else {
+      chunk = this.str.getBytes(chunkSize);
+      this.initialized = true;
+    }
     if (!chunk || chunk.length === 0) {
       this.eof = true;
       return;
     }
+    this.nextChunk = this.str.getBytes(chunkSize);
+    var hasMoreData = this.nextChunk && this.nextChunk.length > 0;
+
     var decrypt = this.decrypt;
-    chunk = decrypt(chunk);
+    chunk = decrypt(chunk, !hasMoreData);
 
     var bufferLength = this.bufferLength;
     var i, n = chunk.length;
