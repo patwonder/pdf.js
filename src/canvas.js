@@ -729,7 +729,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       "paintInlineImageXObjectGroup": TermCommandType.IMAGE,
       "paintImageMaskXObject": TermCommandType.IMAGE,
       "paintImageMaskXObjectGroup": TermCommandType.IMAGE,
-      "paintFormXObjectEnd": TermCommandType.FORMXOBJECT
+      "paintFormXObjectEnd": TermCommandType.FORMXOBJECT,
     },
 
     stateCommands: {
@@ -775,6 +775,12 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       "setFillRGBColor": true,
       "setStrokeCMYKColor": true,
       "setFillCMYKColor": true,
+      // Marked content
+      "markPoint": true,
+      "markPointProps": true,
+      "beginMarkedContent": true,
+      "beginMarkedContentProps": true,
+      "endMarkedContent": true,
     },
     
     // Object clipper
