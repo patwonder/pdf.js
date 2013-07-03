@@ -684,6 +684,7 @@ var WorkerTransport = (function WorkerTransportClosure() {
             break;
           case 'Image':
             var imageData = data[3];
+            imageData = new PDFImageData(imageData.width, imageData.height, imageData.data);
             pageProxy.objs.resolve(id, imageData);
 
             // heuristics that will allow not to store large data

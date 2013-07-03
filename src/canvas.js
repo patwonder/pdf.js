@@ -37,6 +37,11 @@ var ObjectClipper = (function ObjectClipper_closure() {
     },
     
     addCommand: function(command) {
+      if (command.name === "paintInlineImageXObject" || command.name === "paintInlineImageXObjectGroup") {
+        // Replace first argument with IR
+        var imgData = command.args[0];
+        command.args[0] = PDFImageData.toIR(imgData);
+      }
       this.commandList.push(command);
     },
     

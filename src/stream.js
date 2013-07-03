@@ -28,6 +28,11 @@ var Stream = (function StreamClosure() {
     this.end = (start + length) || this.bytes.length;
     this.dict = dict;
   }
+  
+  Stream.fromIR = function(IR) {
+    var bytes = Base64.decodeUint8Array(IR[1]);
+    return new Stream(bytes, 0, bytes.length, Dict.fromIR(IR[2]));
+  };
 
   // required methods for a stream. if a particular stream does not
   // implement these, an error should be thrown
@@ -86,7 +91,12 @@ var Stream = (function StreamClosure() {
     makeSubStream: function Stream_makeSubStream(start, length, dict) {
       return new Stream(this.bytes.buffer, start, length, dict);
     },
-    isStream: true
+    isStream: true,
+    // returns the IR form of this stream object
+    toIR: function Stream_toIR() {
+      var subarray = this.bytes.subarray(this.start, this.start + this.end);
+      return ["Stream", Base64.encodeUint8Array(subarray), this.dict.toIR()];
+    }
   };
 
   return Stream;
@@ -202,6 +212,9 @@ var DecodeStream = (function DecodeStreamClosure() {
     },
     reset: function DecodeStream_reset() {
       this.pos = 0;
+    },
+    toIR: function DecodeStream_toIR() {
+      return ["Stream", Base64.encodeUint8Array(this.getBytes()), this.dict.toIR()];
     }
   };
 

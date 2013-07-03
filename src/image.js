@@ -19,6 +19,44 @@
 
 'use strict';
 
+var PDFImageData = (function PDFImageDataClosure() {
+  function PDFImageData(width, height, data) {
+    this.width = width;
+    this.height = height;
+    this.data = data;
+  }
+  
+  PDFImageData.fromIR = function(IR) {
+    if (IR[0] === "HTMLImageElement") {
+      var img = document.createElement("img");
+      img.src = IR[1];
+      return img;
+    } else {
+      var width = IR[1];
+      var height = IR[2];
+      var data = Base64.decodeUint8Array(IR[3]);
+      return new PDFImageData(width, height, data);
+    }
+  };
+  
+  PDFImageData.toIR = function(image) {
+    if (typeof(image.toIR) === "function")
+      return image.toIR();
+    else if (image instanceof HTMLImageElement)
+      return ["HTMLImageElement", image.src];
+    return null;
+  };
+  
+  PDFImageData.prototype = {
+    toIR: function PDFImageData_toIR() {
+      return ["PDFImageData", this.width, this.height,
+              Base64.encodeUint8Array(this.data)];
+    }
+  };
+  
+  return PDFImageData;
+})();
+
 var PDFImage = (function PDFImageClosure() {
   /**
    * Decode the image in the main thread if it supported. Resovles the promise
@@ -449,11 +487,8 @@ var PDFImage = (function PDFImageClosure() {
     getImageData: function PDFImage_getImageData() {
       var drawWidth = this.drawWidth;
       var drawHeight = this.drawHeight;
-      var imgData = {
-        width: drawWidth,
-        height: drawHeight,
-        data: new Uint8Array(drawWidth * drawHeight * 4)
-      };
+      var imgData = new PDFImageData(drawWidth, drawHeight,
+        new Uint8Array(drawWidth * drawHeight * 4));
       var pixels = imgData.data;
       this.fillRgbaBuffer(pixels, drawWidth, drawHeight);
       return imgData;

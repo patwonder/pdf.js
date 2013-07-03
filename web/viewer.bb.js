@@ -83,7 +83,7 @@ BoundingBox.fromElement = function(element, bbLayerDiv) {
   return new BoundingBox(pos.left, pos.top, element.offsetWidth, element.offsetHeight);
 };
 
-function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height, viewport) {
+function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height, viewport, commonObjs, objs) {
   this._bbLayerFrag = document.createDocumentFragment();
   
   this.bbLayerDiv = bbLayerDiv;
@@ -94,6 +94,8 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height, viewport) {
   this.selectionBB = new BoundingBox(0, 0, 0, 0);
   this.canvasBB = new BoundingBox(0, 0, width, height);
   this.viewport = viewport;
+  this.commonObjs = commonObjs;
+  this.objs = objs;
 }
 
 BoundingBoxLayerBuilder.isBBVisible = function(bb) {
@@ -456,10 +458,29 @@ BoundingBoxLayerBuilder.prototype = {
         lastIndex = currentIndex;
       }
     }
+    var deps = BoundingBoxLayerBuilder.getDependencyArray(dependency);
+    // Fetch dependency data
+    var depsData = {
+      fonts: deps.fonts.map(function(fontName) {
+        var font = this.commonObjs.get(fontName);
+        if (font) {
+          return font.toIR();
+        }
+        return null;
+      }.bind(this)),
+      images: deps.images.map(function(imageName) {
+        var image = this.objs.get(imageName);
+        if (image) {
+          return PDFImageData.toIR(image);
+        }
+        return null;
+      }.bind(this))
+    };
     var output = {
       viewport: this.viewport,
       boundingBox: combinedBoundingBox,
-      dependency: BoundingBoxLayerBuilder.getDependencyArray(dependency),
+      dependency: deps,
+      dependencyData: depsData,
       text: aTextContentConcat.join(""),
       graphics: aGraphicsContent
     };

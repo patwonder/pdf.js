@@ -1585,7 +1585,7 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         // replacing queue items
         fnArray.splice(j, count * 4, ['paintInlineImageXObjectGroup']);
         argsArray.splice(j, count * 4,
-          [{width: imgWidth, height: imgHeight, data: imgData}, map]);
+          [new PDFImageData(imgWidth, imgHeight, imgData), map]);
         i = j;
         ii = fnArray.length;
       }

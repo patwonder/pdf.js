@@ -23,12 +23,70 @@
 
 'use strict';
 
+var Obj = (function ObjClosure() {
+  var getObjTypes = function() {
+    var types = {
+      XRef: XRef,
+      Font: Font,
+      Dict: Dict,
+      Stream: Stream,
+      Cmd: Cmd,
+      Name: Name,
+      PDFImageData: PDFImageData
+    };
+    getObjTypes = function() types;
+    return types;
+  };
+  
+  var Obj = {
+    fromIR: function(IR) {
+      if (!isArray(IR) || IR.length < 1) return IR;
+      switch (IR[0]) {
+      case "Plain":
+        return IR[1];
+      case "Array":
+        return IR[1].map(function(ir) Obj.fromIR(ir));
+      default:
+        var type = getObjTypes()[IR[0]];
+        if (type)
+          return type.fromIR(IR);
+        else
+          error("Unable to create object from IR: " + IR);
+      };
+    },
+    
+    toIR: function(obj) {
+      if (typeof(obj.toIR) === "function") {
+        return obj.toIR();
+      } else {
+        return Obj.toPlainIR(obj);
+      }
+    },
+    
+    toPlainIR: function(obj) {
+      if (isArray(obj)) {
+        return ["Array", obj.map(function(item) Obj.toIR(item))];
+      } else {
+        return ["Plain", obj];
+      }
+    }
+  };
+})();
+
 var Name = (function NameClosure() {
   function Name(name) {
     this.name = name;
   }
+  
+  Name.fromIR = function(IR) {
+    return new Name(IR[1]);
+  };
 
-  Name.prototype = {};
+  Name.prototype = {
+    toIR: function Name_toIR() {
+      return ["Name", this.name];
+    }
+  };
 
   return Name;
 })();
@@ -37,8 +95,16 @@ var Cmd = (function CmdClosure() {
   function Cmd(cmd) {
     this.cmd = cmd;
   }
+  
+  Cmd.fromIR = function(IR) {
+    return Cmd.get(IR[1]);
+  };
 
-  Cmd.prototype = {};
+  Cmd.prototype = {
+    toIR: function Cmd_toIR() {
+      return ["Cmd", this.cmd];
+    }
+  };
 
   var cmdCache = {};
 
@@ -65,6 +131,19 @@ var Dict = (function DictClosure() {
     this.xref = xref;
     this.__nonSerializable__ = nonSerializable; // disable cloning of the Dict
   }
+  
+  Dict.fromIR = function(IR) {
+    var xref = IR[1];
+    if (xref) {
+      xref = XRef.fromIR(xref);
+    }
+    var dict = new Dict(xref);
+    var map = JSON.parse(IR[2]);
+    for (var prop in map) {
+      var obj = Obj.fromIR(map[prop]);
+      dict.map[prop] = obj;
+    }
+  };
 
   Dict.prototype = {
     assignXref: function Dict_assignXref(newXref) {
@@ -146,6 +225,15 @@ var Dict = (function DictClosure() {
       for (var key in this.map) {
         callback(key, this.get(key));
       }
+    },
+    
+    toIR: function Dict_toIR() {
+      var map = {};
+      for (var prop in this.map) {
+        var obj = this.get(prop);
+        map[prop] = Obj.toIR(obj);
+      }
+      return ["Dict", this.xref && this.xref.toIR(), JSON.stringify(map)];
     }
   };
 
@@ -470,8 +558,20 @@ var XRef = (function XRefClosure() {
     this.cache = [];
     this.password = password;
   }
+  
+  XRef.fromIR = function(IR) {
+    var stream = Stream.fromIR(IR[1]);
+    var password = IR[2];
+    var xref = new XRef(stream, password);
+    xref.parse();
+    return xref;
+  };
 
   XRef.prototype = {
+    toIR: function XRef_toIR() {
+      return ["XRef", this.stream.toIR(), this.password];
+    },
+    
     setStartXRef: function XRef_setStartXRef(startXRef) {
       // Store the starting positions of xref tables as we process them
       // so we can recover from missing data errors

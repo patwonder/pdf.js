@@ -2126,7 +2126,7 @@ var PageView = function pageView(container, id, scale,
     div.appendChild(bbLayerDiv);
     
     var bbLayer = this.bbLayer =
-          bbLayerDiv ? new BoundingBoxLayerBuilder(bbLayerDiv, this.id - 1, canvas.width, canvas.height, this.viewport)
+          bbLayerDiv ? new BoundingBoxLayerBuilder(bbLayerDiv, this.id - 1, canvas.width, canvas.height, this.viewport, pdfPage.commonObjs, pdfPage.objs)
                      : null;
 
     if (outputScale.scaled) {

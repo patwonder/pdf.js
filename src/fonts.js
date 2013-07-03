@@ -2512,6 +2512,12 @@ var Font = (function FontClosure() {
 
     this.loading = true;
   }
+  
+  Font.fromIR = function(IR) {
+    var exportedData = IR[1];
+    exportedData.data = Base64.decodeUint8Array(exportedData.data);
+    return new Font(exportedData);
+  };
 
   var numFonts = 0;
   function getUniqueName() {
@@ -3022,6 +3028,12 @@ var Font = (function FontClosure() {
     mimetype: null,
     encoding: null,
 
+    toIR: function Font_toIR() {
+      var exportedData = this.exportData();
+      exportedData.data = Base64.encodeUint8Array(exportedData.data);
+      return ["Font", exportedData];
+    },
+    
     get renderer() {
       var renderer = FontRendererFactory.create(this);
       return shadow(this, 'renderer', renderer);
