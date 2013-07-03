@@ -3021,7 +3021,10 @@ var Font = (function FontClosure() {
     return unicode;
   }
 
-
+  var cacheProps = {
+    "charsCache": true
+  };
+  
   Font.prototype = {
     name: null,
     font: null,
@@ -3042,7 +3045,7 @@ var Font = (function FontClosure() {
     exportData: function Font_exportData() {
       var data = {};
       for (var i in this) {
-        if (this.hasOwnProperty(i))
+        if (this.hasOwnProperty(i) && !(i in cacheProps))
           data[i] = this[i];
       }
       return data;
