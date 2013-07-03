@@ -2516,6 +2516,13 @@ var Font = (function FontClosure() {
   Font.fromIR = function(IR) {
     var exportedData = IR[1];
     exportedData.data = Base64.decodeUint8Array(exportedData.data);
+    if (exportedData.unicodeIsEnabled) {
+      var converted = [];
+      for (var i = 0, l = exportedData.unicodeIsEnabled.length; i < l; i++) {
+        converted[exportedData.unicodeIsEnabled[i]] = true;
+      }
+      exportedData.unicodeIsEnabled = converted;
+    }
     return new Font(exportedData);
   };
 
@@ -3034,6 +3041,15 @@ var Font = (function FontClosure() {
     toIR: function Font_toIR() {
       var exportedData = this.exportData();
       exportedData.data = Base64.encodeUint8Array(exportedData.data);
+      if (exportedData.unicodeIsEnabled) {
+        var converted = [];
+        for (var u = 0, l = exportedData.unicodeIsEnabled.length; u < l; u++) {
+          if (exportedData.unicodeIsEnabled[u]) {
+            converted.push(u);
+          }
+        }
+        exportedData.unicodeIsEnabled = converted;
+      }
       return ["Font", exportedData];
     },
     
