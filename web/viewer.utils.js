@@ -172,7 +172,7 @@ var Utils = {
     if (ct1 === CT.OTHER || ct2 === CT.OTHER)
       return false;
     if (hyphen) {
-      return ct1 === CT.HYPHENABLE && ct2 === CT.HYPHENABLE ? "dehyphen" : false;
+      return ct1 === CT.HYPHENABLE && ct2 === CT.HYPHENABLE && !isSameLine ? "dehyphen" : false;
     }
     if (ct1 === CT.RIGHT_ASSOC_PUNCTUATION || ct2 === CT.LEFT_ASSOC_PUNCTUATION)
       return true;

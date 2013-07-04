@@ -1625,6 +1625,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           this.bbLayer.appendBoundingBox(BoundingBox.fromGeometry(geom), {
             type: BoundingBoxType.TEXT,
             textContent: null, // we'll set it later through setTextContent
+            vertical: vertical,
             hide: false
           });
           if (this.clipper) {
@@ -1702,6 +1703,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           this.bbLayer.appendBoundingBox(BoundingBox.fromGeometry(geom), {
             type: BoundingBoxType.TEXT,
             textContent: null, // we'll set it later through setTextContent
+            vertical: vertical,
             hide: false
           });
           if (this.clipper) {

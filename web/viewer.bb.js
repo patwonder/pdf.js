@@ -420,8 +420,12 @@ BoundingBoxLayerBuilder.prototype = {
       var bbDiv = bbDivs[index];
       var content = bbContents[bbDiv.dataset.contentIdx];
       if (content.type == BoundingBoxType.TEXT) {
-        aTextContent.push(content.textContent);
-        aTextContentIndex.push(textIndex++);
+        aTextContent.push({
+          content: content.textContent,
+          index: textIndex++,
+          vertical: content.vertical,
+          bb: bb
+        });
       } else {
         aGraphicsContent.push(BoundingBoxLayerBuilder.removeDependency(content));
         if (combinedBoundingBox)
@@ -439,23 +443,29 @@ BoundingBoxLayerBuilder.prototype = {
     });
     var aTextContentConcat = [];
     if (aTextContent.length) {
-      aTextContentConcat.push(aTextContent[0]);
+      aTextContentConcat.push(aTextContent[0].content);
       var last = aTextContent[0];
-      var lastIndex = aTextContentIndex[0];
       for (var i = 1, l = aTextContent.length; i < l; i++) {
         var current = aTextContent[i];
-        var currentIndex = aTextContentIndex[i];
-        var concat;
-        if (lastIndex + 1 !== currentIndex || !(concat = Utils.shouldConcatText(last, current, false)))
-          aTextContentConcat.push(" ");
-        if (concat === "dehyphen") {
-          var dehyphened = Utils.dehyphenate(last, current);
-          aTextContentConcat[aTextContentConcat.length - 1] = dehyphened.part1;
-          current = dehyphened.part2;
+        var concat = false;
+        if (last.index + 1 === current.index) {
+          var sameLine = false;
+          if (last.vertical && current.vertical) {
+            sameLine = (Math.max(last.bb.left, current.bb.left) < Math.min(last.bb.right, current.bb.right));
+          } else if (!last.vertical && !current.vertical) {
+            sameLine = (Math.max(last.bb.top, current.bb.top) < Math.min(last.bb.bottom, current.bb.bottom));
+          }
+          concat = Utils.shouldConcatText(last.content, current.content, sameLine);
         }
-        aTextContentConcat.push(current);
+        if (!concat) {
+          aTextContentConcat.push(" ");
+        } else if (concat === "dehyphen") {
+          var dehyphened = Utils.dehyphenate(last.content, current.content);
+          aTextContentConcat[aTextContentConcat.length - 1] = dehyphened.part1;
+          current.content = dehyphened.part2;
+        }
+        aTextContentConcat.push(current.content);
         last = current;
-        lastIndex = currentIndex;
       }
     }
     var deps = BoundingBoxLayerBuilder.getDependencyArray(dependency);
