@@ -28,7 +28,7 @@ var PDFImageData = (function PDFImageDataClosure() {
   
   PDFImageData.fromIR = function(IR) {
     if (IR[0] === "HTMLImageElement") {
-      var img = document.createElement("img");
+      var img = new Image();
       img.src = IR[1];
       return img;
     } else {
