@@ -70,11 +70,12 @@ BoundingBox.prototype = {
 
 BoundingBox.fromGeometry = function(geom) {
   var fontHeight = geom.fontSize * Math.abs(geom.vScale);
+  var fontHeightDiff = Math.max(0, geom.divHeight - fontHeight);
   return new BoundingBox(
     /*left*/geom.x,
     /*top*/geom.y - fontHeight,
     /*width*/geom.canvasWidth * geom.hScale,
-    /*height*/fontHeight);
+    /*height*/fontHeight + fontHeight * 0.382);
 };
 
 BoundingBox.fromElement = function(element, bbLayerDiv) {

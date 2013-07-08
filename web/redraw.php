@@ -52,7 +52,6 @@
       foreach ($headers as $header => $value) {
         echo "$header: $value \n";
       }
-      echo file_get_contents('php://input');
     ?></pre>
     <div id="boundingBox"></div>
     <div id="viewport"></div>

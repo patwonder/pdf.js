@@ -468,6 +468,49 @@ var Util = PDFJS.Util = (function UtilClosure() {
       sub.prototype[prop] = prototype[prop];
     }
   };
+  
+  /**
+  * Measures text by creating a DIV in the document and adding the relevant text to it.
+  * Then checking the .offsetWidth and .offsetHeight. Because adding elements to the DOM is not particularly
+  * efficient in animations (particularly) it caches the measured text width/height.
+  * 
+  * @param  string text   The text to measure
+  * @param  bool   bold   Whether the text is bold or not
+  * @param  string font   The font to use
+  * @param  size   number The size of the text (in pts)
+  * @return array         A two element array of the width and height of the text
+  */
+  Util.measureText = function Util_measureText(text, bold, font, size) {
+    // Disabled
+    return [0, 0];
+    // This global variable is used to cache repeated calls with the same arguments
+    var str = text + ':' + bold + ':' + font + ':' + size;
+    if (typeof(Util.__measuretext_cache__) == 'object' && Util.__measuretext_cache__[str]) {
+        return Util.__measuretext_cache__[str];
+    }
+
+    var div = document.createElement('DIV');
+        div.innerHTML = text;
+        div.style.position = 'absolute';
+        div.style.top = '-100px';
+        div.style.left = '-100px';
+        div.style.fontFamily = font;
+        div.style.fontWeight = bold ? 'bold' : 'normal';
+        div.style.fontSize = size + 'pt';
+    document.body.appendChild(div);
+    
+    var size = [div.offsetWidth, div.offsetHeight];
+
+    document.body.removeChild(div);
+    
+    // Add the sizes to the cache as adding DOM elements is costly and can cause slow downs
+    if (typeof(Util.__measuretext_cache__) != 'object') {
+        Util.__measuretext_cache__ = [];
+    }
+    Util.__measuretext_cache__[str] = size;
+    
+    return size;
+  };
 
   return Util;
 })();

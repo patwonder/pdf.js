@@ -10,3 +10,6 @@
 #dependency {
   color: red;
 }
+#graphics > canvas {
+  border: 1px dashed black;
+}

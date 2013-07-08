@@ -40,6 +40,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
       if (command.name === "paintInlineImageXObject" || command.name === "paintInlineImageXObjectGroup") {
         // Replace first argument with IR
         var imgData = command.args[0];
+        command.args = command.args.slice(0);
         command.args[0] = PDFImageData.toIR(imgData);
       }
       this.commandList.push(command);
@@ -666,13 +667,28 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     getFullContextState: function() {
       return getFullContextState(this.ctx, this.current);
     },
-    setFullContextState: function(fullState) {
+    setFullContextState: function(fullState, transform) {
       setFullContextState(this.ctx, this.current, fullState);
       for (var prop in ctxExtraColorProps) {
         var csprop = ctxExtraColorProps[prop];
         var cs = this.current[csprop];
         if (cs.name == "Pattern")
           this.current[prop] = this.getColorN_Pattern(this.current[prop], cs);
+      }
+      var fontRefName = this.current.fontRefName;
+      if (fontRefName && this.commonObjs.isResolved(fontRefName)) {
+        this.setFont(fontRefName, this.current.fontSize);
+      }
+      if (transform) {
+        this.ctx.setTransform.apply(this.ctx, Util.transformAll(this.ctx.mozCurrentTransform, transform));
+      }
+    },
+    setFullContextStateStack: function(stateStack, transform) {
+      for (var stackptr = 0, l = stateStack.length; stackptr < l; stackptr++) {
+        if (stackptr !== 0)
+          this.save();
+        var fullState = stateStack[stackptr];
+        this.setFullContextState(fullState, transform);
       }
     },
     slowCommands: {
@@ -1472,6 +1488,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var bbSelection = !!(bbLayer && !skipBBSelection);
       var needGeometry = textSelection || bbSelection;
       var canvasWidth = 0.0;
+      var canvasHeight = 0.0;
       var vertical = font.vertical;
       var defaultVMetrics = font.defaultVMetrics;
 
@@ -1610,8 +1627,10 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         ctx.restore();
       }
 
+      var divHeight = Util.measureText(str, false, this.ctx.font, this.current.fontSize)[1];
       if (needGeometry) {
         geom.canvasWidth = canvasWidth;
+        geom.divHeight = divHeight;
         if (vertical) {
           var vmetric = font.defaultVMetrics;
           geom.x += vmetric[1] * fontSize * current.fontMatrix[0] /
@@ -1636,7 +1655,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (this.depAnalyzer)
         this.depAnalyzer.addFontDependency(this.current.fontRefName);
 
-      return canvasWidth;
+      return { width: canvasWidth, height: divHeight };
     },
     showSpacedText: function CanvasGraphics_showSpacedText(arr) {
       var ctx = this.ctx;
@@ -1650,6 +1669,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var bbLayer = this.bbLayer;
       var geom;
       var canvasWidth = 0.0;
+      var divHeight = 0.0;
       var textSelection = textLayer ? true : false;
       var bbSelection = !!bbLayer;
       var needGeometry = textSelection || bbSelection;
@@ -1676,10 +1696,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           if (needGeometry)
             spacingAccumulator += spacingLength;
         } else if (isString(e)) {
-          var shownCanvasWidth = this.showText(e, true, true);
+          var shownCanvasSize = this.showText(e, true, true);
 
           if (needGeometry) {
-            canvasWidth += spacingAccumulator + shownCanvasWidth;
+            canvasWidth += spacingAccumulator + shownCanvasSize.width;
+            divHeight = Math.max(divHeight, shownCanvasSize.height);
             spacingAccumulator = 0;
           }
         } else {
@@ -1689,6 +1710,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
       if (needGeometry) {
         geom.canvasWidth = canvasWidth;
+        geom.divHeight = divHeight;
         if (vertical) {
           var fontSizeScale = current.fontSizeScale;
           var vmetric = font.defaultVMetrics;
