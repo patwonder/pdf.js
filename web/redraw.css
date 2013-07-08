@@ -13,3 +13,14 @@
 #graphics > canvas {
   border: 1px dashed black;
 }
+#scaleWrapper {
+  overflow: hidden;
+  width: 460px;
+  padding: 10px;
+}
+#scaleValue {
+  float: right;
+}
+#scale {
+  width: 400px;
+}

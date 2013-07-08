@@ -7,6 +7,7 @@
     <meta charset="utf-8">
     <title>PDF Clipper Redraw</title>
     <link rel="stylesheet" type="text/css" href="redraw.css" />
+    <link rel="stylesheet" type="text/css" href="css/ui-lightness/jquery-ui-1.10.3.custom.min.css" />
     
     <script>
       var obj = JSON.parse(<?php echo json_encode($_POST['json']); ?>);
@@ -43,6 +44,8 @@
     <script src="../src/bidi.js"></script>
     <script>PDFJS.workerSrc = '../src/worker_loader.js';</script>
 
+    <script src="jquery.min.js"></script>
+    <script src="jquery-ui-1.10.3.custom.min.js"></script>
     <script src="redraw.js"></script>
   </head>
   <body>
@@ -50,13 +53,17 @@
       $headers = apache_request_headers();
 
       foreach ($headers as $header => $value) {
-        echo "$header: $value \n";
+        echo "$header: $value\n";
       }
     ?></pre>
     <div id="boundingBox"></div>
     <div id="viewport"></div>
     <div id="dependency"></div>
     <div id="text"></div>
+    <div id="scaleWrapper">
+      <div id="scaleValue"></div>
+      <div id="scale"></div>
+    </div>
     <div id="graphics"></div>
   </body>
 </html>

@@ -7,10 +7,25 @@
     E("viewport").textContent = JSON.stringify(obj.viewport);
     E("dependency").textContent = JSON.stringify(obj.dependency);
     E("text").textContent = obj.text;
-    redraw();
+    $("#scale").slider({
+      animate: true,
+      min: 0.1,
+      max: 5.0,
+      value: Math.floor(obj.viewport.scale * 100) / 100,
+      step: 0.01,
+      change: function(event, ui) {
+        redraw(ui.value);
+      },
+      slide: function(event, ui) {
+        $("#scaleValue").text(ui.value);
+      }
+    });
+    var scale = $("#scale").slider("option", "value");
+    $("#scaleValue").text(scale);
+    redraw(scale);
   }, false);
   
-  function redraw() {
+  function redraw(newscale) {
     // De-serialize dependency objects
     var commonObjs = new PDFObjects();
     var objs = new PDFObjects();
@@ -37,6 +52,7 @@
     })();
     
     // Resolve operatorList, de-serialize certain commands if needed
+    var transparency = false;
     var primitives = [];
     (function() {
       for (var i = 0, l = obj.graphics.length; i < l; i++) {
@@ -46,7 +62,8 @@
           stateStack: originalPrimitive.stateStack,
           operatorList: {
             fnArray: [],
-            argsArray: []
+            argsArray: [],
+            transparency: originalPrimitive.transparency
           }
         };
         var fnArray = primitive.operatorList.fnArray;
@@ -66,28 +83,37 @@
           argsArray.push(command.args);
         }
         primitives.push(primitive);
+        transparency = transparency || originalPrimitive.transparency;
       }
     })();
     
-    // Create the viewport information
-    var bb = obj.boundingBox;
-    var scale = obj.viewport.scale;
-    var viewport = new PageViewport([0, 0, bb.width / scale, bb.height / scale], scale, obj.viewport.rotation, obj.viewport.offsetX, obj.viewport.offsetY, true);
-    
-    // Create the canvas to draw onto
-    var canvas = createScratchCanvas(viewport.width, viewport.height);
-    E("graphics").appendChild(canvas);
-    
-    // Prepare drawing
-    var canvasCtx = canvas.getContext("2d");
-    var gfx = new CanvasGraphics(canvasCtx, commonObjs, objs);
-    gfx.beginDrawing(viewport, false);
-    for (var i = 0, l = primitives.length; i < l; i++) {
-      var primitive = primitives[i];
-      gfx.setFullContextStateStack(primitive.stateStack,
-        [1, 0, 0, 1, -bb.left, -bb.top]);
-      gfx.executeOperatorList(primitive.operatorList)
-    }
-    gfx.endDrawing();
+    redraw = function(newscale) {
+      newscale = newscale || 1.0;
+
+      // Create the viewport information
+      var bb = obj.boundingBox;
+      var scale = obj.viewport.scale;
+      var viewport = new PageViewport([0, 0, bb.width / scale, bb.height / scale], newscale, obj.viewport.rotation, obj.viewport.offsetX, obj.viewport.offsetY, true);
+      
+      // Create the canvas to draw onto
+      var canvas = E("graphics").querySelector("canvas") || d.createElement("canvas");
+      E("graphics").appendChild(canvas);
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      // Prepare drawing
+      var canvasCtx = canvas.getContext("2d");
+      var gfx = new CanvasGraphics(canvasCtx, commonObjs, objs);
+      gfx.beginDrawing(viewport, transparency);
+      for (var i = 0, l = primitives.length; i < l; i++) {
+        var primitive = primitives[i];
+        gfx.setFullContextStateStack(primitive.stateStack,
+          Util.transformAll([1, 0, 0, 1, -bb.left, -bb.top],
+          [newscale / scale, 0, 0, newscale / scale, 0, 0]));
+        gfx.executeOperatorList(primitive.operatorList)
+      }
+      gfx.endDrawing();
+    };
+    redraw(newscale);
   }
 })(document, window);

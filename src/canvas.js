@@ -805,7 +805,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     },
     
     // Object clipper
-    recordObject: function CanvasGraphics_recordObject(type) {
+    recordObject: function CanvasGraphics_recordObject(type, transparency) {
       var clipper = this.clipper;
       this.clipper.restrictBoundingBox();
       if (!clipper.isActive || (clipper.boundingBox.width == 0 && clipper.boundingBox.height == 0))
@@ -832,7 +832,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var content = {
         type: bbtype,
         stateStack: clipper.stateStack,
-        commands: clipper.commandList
+        commands: clipper.commandList,
+        transparency: transparency
       };
       if (this.depAnalyzer.dependency)
         content.dependency = this.depAnalyzer.dependency;
@@ -939,7 +940,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           if (this.clipper && (fnName in termCommands)) {
             // Treat form XObject as a whole
             if (this.current.paintFormXObjectDepth == 0) {
-              this.recordObject(termCommands[fnName]);
+              this.recordObject(termCommands[fnName], operatorList.transparency);
               this.clipper.reset(null);
               this.depAnalyzer.reset();
             }
