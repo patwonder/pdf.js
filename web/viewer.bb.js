@@ -451,11 +451,15 @@ BoundingBoxLayerBuilder.prototype = {
         var concat = false;
         if (last.index + 1 === current.index) {
           var sameLine = false;
+          var overlap = 0, smaller = 0;
           if (last.vertical && current.vertical) {
-            sameLine = (Math.max(last.bb.left, current.bb.left) < Math.min(last.bb.right, current.bb.right));
+            overlap = Math.min(last.bb.right, current.bb.right) - Math.max(last.bb.left, current.bb.left);
+            smaller = Math.min(last.bb.width, current.bb.width);
           } else if (!last.vertical && !current.vertical) {
-            sameLine = (Math.max(last.bb.top, current.bb.top) < Math.min(last.bb.bottom, current.bb.bottom));
+            overlap = Math.min(last.bb.bottom, current.bb.bottom) - Math.max(last.bb.top, current.bb.top);
+            smaller = Math.min(last.bb.height, current.bb.height);
           }
+          sameLine = (overlap / smaller >= 0.5);
           concat = Utils.shouldConcatText(last.content, current.content, sameLine);
         }
         if (!concat) {
