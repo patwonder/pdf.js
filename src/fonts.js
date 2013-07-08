@@ -2515,7 +2515,8 @@ var Font = (function FontClosure() {
   
   Font.fromIR = function(IR) {
     var exportedData = IR[1];
-    exportedData.data = Base64.decodeUint8Array(exportedData.data);
+    if (exportedData.data)
+      exportedData.data = Base64.decodeUint8Array(exportedData.data);
     if (exportedData.unicodeIsEnabled) {
       var converted = [];
       for (var i = 0, l = exportedData.unicodeIsEnabled.length; i < l; i++) {
@@ -3040,7 +3041,8 @@ var Font = (function FontClosure() {
 
     toIR: function Font_toIR() {
       var exportedData = this.exportData();
-      exportedData.data = Base64.encodeUint8Array(exportedData.data);
+      if (exportedData.data)
+        exportedData.data = Base64.encodeUint8Array(exportedData.data);
       if (exportedData.unicodeIsEnabled) {
         var converted = [];
         for (var u = 0, l = exportedData.unicodeIsEnabled.length; u < l; u++) {

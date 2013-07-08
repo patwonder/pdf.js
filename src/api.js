@@ -688,7 +688,8 @@ var WorkerTransport = (function WorkerTransportClosure() {
             pageProxy.objs.resolve(id, imageData);
 
             // heuristics that will allow not to store large data
-            var MAX_IMAGE_SIZE_TO_STORE = 8000000;
+            // for content clipping, should allow storing data of any size
+            var MAX_IMAGE_SIZE_TO_STORE = 1e11;
             if ('data' in imageData &&
                 imageData.data.length > MAX_IMAGE_SIZE_TO_STORE) {
               pageProxy.cleanupAfterRender = true;
