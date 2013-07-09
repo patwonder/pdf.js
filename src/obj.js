@@ -34,7 +34,9 @@ var Obj = (function ObjClosure() {
       Name: Name,
       PDFImageData: PDFImageData
     };
-    getObjTypes = function() types;
+    getObjTypes = function() {
+      return types;
+    };
     return types;
   };
   
@@ -45,7 +47,9 @@ var Obj = (function ObjClosure() {
       case "Plain":
         return IR[1];
       case "Array":
-        return IR[1].map(function(ir) Obj.fromIR(ir));
+        return IR[1].map(function(ir) {
+          return Obj.fromIR(ir);
+        });
       default:
         var type = getObjTypes()[IR[0]];
         if (type)
@@ -65,7 +69,9 @@ var Obj = (function ObjClosure() {
     
     toPlainIR: function(obj) {
       if (isArray(obj)) {
-        return ["Array", obj.map(function(item) Obj.toIR(item))];
+        return ["Array", obj.map(function(item) {
+          return Obj.toIR(item);
+        })];
       } else {
         return ["Plain", obj];
       }

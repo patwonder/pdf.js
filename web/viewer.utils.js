@@ -1,5 +1,10 @@
 "use strict"
 
+if(!('contains' in String.prototype))
+  String.prototype.contains = function(str, startIndex) {
+    return -1 !== String.prototype.indexOf.call(this, str, startIndex);
+  };
+
 var Utils = {
   assertEquals: function(actual, expected, expression) {
     if (actual !== expected) {
@@ -112,7 +117,9 @@ var Utils = {
   inRanges: function(code, ranges) {
     if (code < ranges[0][0] || code > ranges[ranges.length - 1][1])
       return false;
-    return ranges.some(function(range) code >= range[0] && code <= range[1])
+    return ranges.some(function(range) {
+      return code >= range[0] && code <= range[1];
+    });
   },
   
   isHyphen: function(code) {

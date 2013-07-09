@@ -84,7 +84,9 @@ var Base64 = {
 
   _base64_encode: function(input) {
     if (typeof(window.btoa) == "function") {
-      this._base64_encode = function(input) btoa(input);
+      this._base64_encode = function(input) {
+        return btoa(input);
+      };
     } else {
       this._base64_encode = function(input) {
         var output = "";
@@ -121,7 +123,9 @@ var Base64 = {
 
   _base64_decode: function(input) {
     if (typeof(window.atob) == "function") {
-      this._base64_decode = function(input) atob(input);
+      this._base64_decode = function(input) {
+        return atob(input);
+      };
     } else {
       this._base64_decode = function(input) {
         var output = "";

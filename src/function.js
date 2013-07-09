@@ -87,7 +87,9 @@ var PDFFunction = (function PDFFunctionClosure() {
             return this.constructPostScriptFromIR(IR);
         }
       }.bind(this))();
-      func.toIR = function() IR;
+      func.toIR = function() {
+        return IR;
+      };
       return func;
     },
 

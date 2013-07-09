@@ -558,7 +558,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
   var ctxProps = ['strokeStyle', 'fillStyle', 'fillRule', 'globalAlpha',
                   'lineWidth', 'lineCap', 'lineJoin', 'miterLimit',
-                  'globalCompositeOperation', 'font',  'mozCurrentTransform'];
+                  'globalCompositeOperation', 'font'];
   var ctxExtraProps = ["alphaIsShape", "fontSize", "fontSizeScale", "textMatrix",
                       "fontMatrix", "leading", "x", "y", "lineX", "lineY",
                       "charSpacing", "wordSpacing", "textHScale",
@@ -600,6 +600,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       obj.lineDash = sourceCtx.mozDash;
       obj.lineDashOffset = sourceCtx.mozDashOffset;
     }
+    obj.mozCurrentTransform = sourceCtx.mozCurrentTransform;
     // Copy sourceExtraState properties
     for (var i = 0, l = ctxExtraProps.length; i < l; i++) {
       var prop = ctxExtraProps[i];
@@ -637,6 +638,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       ctx.mozDash = fullState.lineDash;
       ctx.mozDashOffset = fullState.lineDashOffset;
     }
+    ctx.setTransform.apply(ctx, fullState.mozCurrentTransform);
     // Copy extraState properties
     for (var i = 0, l = ctxExtraProps.length; i < l; i++) {
       var prop = ctxExtraProps[i];

@@ -185,7 +185,9 @@ BoundingBoxLayerBuilder.prototype = {
   
   setupRenderLayoutTimer: function() {
     var RENDER_DELAY = 200; // in ms
-    this._setupTimer(this.renderLayer, function() PDFView.lastScroll, RENDER_DELAY);
+    this._setupTimer(this.renderLayer, function() {
+      return PDFView.lastScroll;
+    }, RENDER_DELAY);
   },
   
   appendBoundingBox: function(bb, content) {
@@ -251,7 +253,9 @@ BoundingBoxLayerBuilder.prototype = {
     
     // We wanna handle all subsequent mouse events on the layer div
     // It's not necessary to bubble everything up
-    this.bbLayerDiv.setCapture(true);
+    // Note that Chrome does not yet support this (as of July 2013)
+    if (this.bbLayerDiv.setCapture)
+      this.bbLayerDiv.setCapture(true);
     
     // If listener still bound, e.g. due to focus lost while selecting,
     // we should not try to initiate another selection gesture
@@ -371,7 +375,9 @@ BoundingBoxLayerBuilder.prototype = {
   
   setupDetectionTimer: function() {
     var DETECT_DELAY = 200; // in ms
-    this._setupTimer(this.doDetect, function() this._lastSelectionAction, DETECT_DELAY);
+    this._setupTimer(this.doDetect, function() {
+      return this._lastSelectionAction;
+    }, DETECT_DELAY);
   },
   
   _setupTimer: function(action, lastActionGetter, delay) {
