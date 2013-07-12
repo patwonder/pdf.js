@@ -492,7 +492,7 @@ BoundingBoxLayerBuilder.prototype = {
       images: deps.images.map(function(imageName) {
         var image = this.objs.get(imageName);
         if (image) {
-          return PDFImageData.toIR(image);
+          return PDFImageData.toIR(image, true);
         }
         return null;
       }.bind(this))

@@ -41,7 +41,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
         // Replace first argument with IR
         var imgData = command.args[0];
         command.args = command.args.slice(0);
-        command.args[0] = PDFImageData.toIR(imgData);
+        command.args[0] = PDFImageData.toIR(imgData, true);
       }
       this.commandList.push(command);
     },

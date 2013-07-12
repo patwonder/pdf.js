@@ -29,6 +29,7 @@
     // De-serialize dependency objects
     var commonObjs = new PDFObjects();
     var objs = new PDFObjects();
+    var promises = [];
     
     (function() {
       var fontIds = obj.dependency.fonts;
@@ -47,6 +48,9 @@
         var id = imageIds[i];
         var IR = imageIRs[i];
         var imgData = PDFImageData.fromIR(IR);
+        if (imgData.promise) {
+          promises.push(imgData.promise);
+        }
         objs.resolve(id, imgData);
       }
     })();
@@ -78,6 +82,9 @@
             };
             var IR = command.args[0];
             command.args[0] = PDFImageData.fromIR(IR);
+            if (command.args[0].promise) {
+              promises.push(command.args[0].promise);
+            }
           }
           fnArray.push(command.name);
           argsArray.push(command.args);
@@ -118,10 +125,11 @@
       }
       gfx.endDrawing();
     };
-    redraw(newscale);
     
-    // Paint each image separately
-    (function() {
+    Promise.all(promises).then(function() {
+      redraw(newscale);
+      
+      // Paint each image separately
       var imageIds = obj.dependency.images;
       for (var i = 0, l = imageIds.length; i < l; i++) {
         var id = imageIds[i];
@@ -154,6 +162,6 @@
           })());
         }
       }
-    })();
+    });
   }
 })(document, window);

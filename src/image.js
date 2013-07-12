@@ -28,8 +28,13 @@ var PDFImageData = (function PDFImageDataClosure() {
   
   PDFImageData.fromIR = function(IR) {
     if (IR[0] === "HTMLImageElement") {
+      var promise = new Promise();
       var img = new Image();
       img.src = IR[1];
+      img.promise = promise;
+      img.onload = function() {
+        promise.resolve();
+      };
       return img;
     } else {
       var width = IR[1];
@@ -39,18 +44,29 @@ var PDFImageData = (function PDFImageDataClosure() {
     }
   };
   
-  PDFImageData.toIR = function(image) {
+  PDFImageData.toIR = function(image, compress) {
     if (typeof(image.toIR) === "function")
-      return image.toIR();
+      return image.toIR(compress);
     else if (image instanceof HTMLImageElement)
       return ["HTMLImageElement", image.src];
     return null;
   };
   
   PDFImageData.prototype = {
-    toIR: function PDFImageData_toIR() {
-      return ["PDFImageData", this.width, this.height,
-              Base64.encodeUint8Array(this.data)];
+    toIR: function PDFImageData_toIR(compress) {
+      if (!compress) {
+        return ["PDFImageData", this.width, this.height,
+                Base64.encodeUint8Array(this.data)];
+      }
+      
+      // To compress image data, paint it onto a canvas and get the data:image/png url
+      var canvas = document.createElement("canvas");
+      canvas.width = this.width;
+      canvas.height = this.height;
+      var ctx = canvas.getContext("2d");
+      CanvasGraphics.putBinaryImageData(ctx, this);
+      var src = canvas.toDataURL("image/png");
+      return ["HTMLImageElement", src];
     }
   };
   
