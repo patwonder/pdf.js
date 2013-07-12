@@ -537,6 +537,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     ctx.putImageData(tmpImgData, 0, 0);
   }
 
+  CanvasGraphics.putBinaryImageData = putBinaryImageData;
+  
   function copyCtxState(sourceCtx, destCtx) {
     var properties = ['strokeStyle', 'fillStyle', 'fillRule', 'globalAlpha',
                       'lineWidth', 'lineCap', 'lineJoin', 'miterLimit',

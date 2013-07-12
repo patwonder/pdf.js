@@ -10,8 +10,14 @@
 #dependency {
   color: red;
 }
-#graphics > canvas {
+canvas.redraw {
   border: 1px dashed black;
+}
+#graphics img {
+  border: 1px dashed black;
+  background-image: url("images/alpha.png");
+  background-repeat: repeat;
+  vertical-align: middle;
 }
 #scaleWrapper {
   overflow: hidden;

@@ -96,8 +96,12 @@
       var viewport = new PageViewport([0, 0, bb.width / scale, bb.height / scale], newscale, obj.viewport.rotation, obj.viewport.offsetX, obj.viewport.offsetY, true);
       
       // Create the canvas to draw onto
-      var canvas = E("graphics").querySelector("canvas") || d.createElement("canvas");
-      E("graphics").appendChild(canvas);
+      var canvas = E("graphics").querySelector("canvas.redraw") || (function() {
+        var canvas = d.createElement("canvas");
+        canvas.className = "redraw";
+        E("graphics").appendChild(canvas);
+        return canvas;
+      })();
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       
@@ -115,5 +119,41 @@
       gfx.endDrawing();
     };
     redraw(newscale);
+    
+    // Paint each image separately
+    (function() {
+      var imageIds = obj.dependency.images;
+      for (var i = 0, l = imageIds.length; i < l; i++) {
+        var id = imageIds[i];
+        var imageObject = objs.get(id);
+        var src = "";
+        if (imageObject) {
+          if (imageObject instanceof HTMLImageElement) {
+            // for jpeg images, get the image src directly
+            src = imageObject.src;
+          } else {
+            // otherwise, paint it onto a canvas and get the png data
+            var width = imageObject.width;
+            var height = imageObject.height;
+            var canvas = d.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext("2d");
+            CanvasGraphics.putBinaryImageData(ctx, imageObject);
+            src = canvas.toDataURL("image/png");
+          }
+          E("graphics").appendChild((function() {
+            var div = d.createElement("div");
+            div.textContent = id;
+            div.appendChild((function() {
+              var img = new Image();
+              img.src = src;
+              return img;
+            })());
+            return div;
+          })());
+        }
+      }
+    })();
   }
 })(document, window);
