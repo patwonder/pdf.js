@@ -58,6 +58,7 @@
     // Resolve operatorList, de-serialize certain commands if needed
     var transparency = false;
     var primitives = [];
+    var clipPaths = [];
     (function() {
       for (var i = 0, l = obj.graphics.length; i < l; i++) {
         var originalPrimitive = obj.graphics[i];
@@ -70,6 +71,8 @@
             transparency: originalPrimitive.transparency
           }
         };
+        if (originalPrimitive.clipPathIndex)
+          primitive.clipPathIndex = originalPrimitive.clipPathIndex;
         var fnArray = primitive.operatorList.fnArray;
         var argsArray = primitive.operatorList.argsArray;
         for (var j = 0, ll = originalPrimitive.commands.length; j < ll; j++) {
@@ -91,6 +94,26 @@
         }
         primitives.push(primitive);
         transparency = transparency || originalPrimitive.transparency;
+      }
+      for (var i = 0, l = obj.dependencyData.clipPaths.length; i < l; i++) {
+        var originalClipPathObject = obj.dependencyData.clipPaths[i];
+        var clipPathObject = {
+          type: originalClipPathObject.type,
+          stateStack: originalClipPathObject.stateStack,
+          operatorList: {
+            fnArray: [],
+            argsArray: [],
+            transparency: originalClipPathObject.transparency
+          }
+        };
+        var fnArray = clipPathObject.operatorList.fnArray;
+        var argsArray = clipPathObject.operatorList.argsArray;
+        for (var j = 0, ll = originalClipPathObject.commands.length; j < ll; j++) {
+          var command = originalClipPathObject.commands[j];
+          fnArray.push(command.name);
+          argsArray.push(command.args);
+        }
+        clipPaths.push(clipPathObject);
       }
     })();
     
@@ -118,10 +141,20 @@
       gfx.beginDrawing(viewport, transparency);
       for (var i = 0, l = primitives.length; i < l; i++) {
         var primitive = primitives[i];
+        gfx.save();
+        if (typeof(primitive.clipPathIndex) !== "undefined") {
+          // apply the clipping path object
+          var clipPathObject = clipPaths[primitive.clipPathIndex];
+          gfx.setFullContextStateStack(clipPathObject.stateStack,
+            Util.transformAll([1, 0, 0, 1, -bb.left, -bb.top],
+            [newscale / scale, 0, 0, newscale / scale, 0, 0]));
+          gfx.executeOperatorList(clipPathObject.operatorList);
+        }
         gfx.setFullContextStateStack(primitive.stateStack,
           Util.transformAll([1, 0, 0, 1, -bb.left, -bb.top],
           [newscale / scale, 0, 0, newscale / scale, 0, 0]));
-        gfx.executeOperatorList(primitive.operatorList)
+        gfx.executeOperatorList(primitive.operatorList);
+        gfx.restore();
       }
       gfx.endDrawing();
     };

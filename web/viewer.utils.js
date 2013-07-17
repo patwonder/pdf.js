@@ -201,4 +201,13 @@ var Utils = {
     }
     return { part1: part1, part2: part2 };
   },
+  
+  getObjectIndex: function(obj, objArr) {
+    var l = objArr.length;
+    for (var i = 0; i < l; i++) {
+      if (objArr[i] === obj) return i;
+    }
+    objArr.push(obj);
+    return objArr.length - 1;
+  }
 };

@@ -664,7 +664,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     PRIMITIVE: 1,
     IMAGE: 2,
     FORMXOBJECT: 3,
-    OTHER: 4
+    OTHER: 4,
+    CLIP_PATH: 5
   };
 
   CanvasGraphics.prototype = {
@@ -734,8 +735,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       "nextLineShowText": TermCommandType.TEXT,
       "nextLineSetSpacingShowText": TermCommandType.TEXT,
       "endText": TermCommandType.TEXT,
-      "clip": TermCommandType.PRIMITIVE,
-      "eoClip": TermCommandType.PRIMITIVE,
+      "clip": TermCommandType.CLIP_PATH,
+      "eoClip": TermCommandType.CLIP_PATH,
       "stroke": TermCommandType.PRIMITIVE,
       "closeStroke": TermCommandType.PRIMITIVE,
       "fill": TermCommandType.PRIMITIVE,
@@ -812,9 +813,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     recordObject: function CanvasGraphics_recordObject(type, transparency) {
       var clipper = this.clipper;
       this.clipper.restrictBoundingBox();
-      if (!clipper.isActive || (clipper.boundingBox.width == 0 && clipper.boundingBox.height == 0))
-        return;
-        
+      if (type !== TermCommandType.CLIP_PATH && (!clipper.isActive ||
+        (clipper.boundingBox.width == 0 && clipper.boundingBox.height == 0))) {
+          return;
+      }
+      
       var bb = clipper.boundingBox;
       if (bb.width == 0) bb.width = 1;
       else if (bb.height == 0) bb.height = 1;
@@ -822,6 +825,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var bbLayer = this.bbLayer;
       var bbtype;
       switch (type) {
+      case TermCommandType.CLIP_PATH:
+        bbtype = BoundingBoxType.CLIP_PATH;
+        break;
       case TermCommandType.TEXT:
         bbtype = BoundingBoxType.PRIMITIVE_TEXT;
         break;
@@ -837,11 +843,18 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         type: bbtype,
         stateStack: clipper.stateStack,
         commands: clipper.commandList,
-        transparency: transparency
+        transparency: transparency,
+        clipPathObject: (type !== TermCommandType.CLIP_PATH) ? this.current.clipPathObject : null
       };
       if (this.depAnalyzer.dependency)
         content.dependency = this.depAnalyzer.dependency;
-      bbLayer.appendBoundingBox(clipper.boundingBox, content);
+      if (type !== TermCommandType.CLIP_PATH)
+        bbLayer.appendBoundingBox(clipper.boundingBox, content);
+      else {
+        // should add an "endPath" command to consume the clipping path
+        content.commands.push({ name: "endPath", args: [] });
+        this.current.clipPathObject = content;
+      }
     },
 
     beginDrawing: function CanvasGraphics_beginDrawing(viewport, transparency) {

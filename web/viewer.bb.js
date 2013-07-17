@@ -4,7 +4,8 @@ var BoundingBoxType = {
   TEXT: 1,
   IMAGE: 2,
   PRIMITIVE: 3,
-  PRIMITIVE_TEXT: 4
+  PRIMITIVE_TEXT: 4,
+  CLIP_PATH: 5
 };
 
 function BoundingBox(left, top, width, height) {
@@ -118,6 +119,28 @@ BoundingBoxLayerBuilder.removeDependency = function(content) {
     }
   }
   return newContent;
+};
+
+BoundingBoxLayerBuilder.purifyContent = function(content) {
+  var extraProps = ["dependency", "clipPathObject"];
+  for (var i = 0, l = extraProps.length; i < l; i++) {
+    if (typeof(content[extraProps[i]]) !== "undefined") {
+      var newContent = {};
+      for (var prop in content) {
+        var special = false;
+        for (var j = 0; j < l; j++) {
+          if (extraProps[j] === prop) {
+            special = true;
+            break;
+          }
+        }
+        if (!special)
+          newContent[prop] = content[prop];
+      }
+      return newContent;
+    }
+  }
+  return content;
 };
 
 BoundingBoxLayerBuilder.analyzeDependency = function(content, dependency) {
@@ -421,7 +444,8 @@ BoundingBoxLayerBuilder.prototype = {
     var combinedBoundingBox = null;
     var dependency = {
       fonts: {},
-      images: {}
+      images: {},
+      clipPaths: []
     };
     this._detectIntersectedBBs(function(bb, index) {
       var bbDiv = bbDivs[index];
@@ -434,7 +458,12 @@ BoundingBoxLayerBuilder.prototype = {
           bb: bb
         });
       } else {
-        aGraphicsContent.push(BoundingBoxLayerBuilder.removeDependency(content));
+        var clipPathObject = content.clipPathObject;
+        var newContent = BoundingBoxLayerBuilder.purifyContent(content);
+        if (clipPathObject) {
+          newContent.clipPathIndex = Utils.getObjectIndex(clipPathObject, dependency.clipPaths);
+        }
+        aGraphicsContent.push(newContent);
         if (combinedBoundingBox)
           combinedBoundingBox.extendBoundingBox(bb);
         else
@@ -495,6 +524,9 @@ BoundingBoxLayerBuilder.prototype = {
           return PDFImageData.toIR(image, true);
         }
         return null;
+      }.bind(this)),
+      clipPaths: dependency.clipPaths.map(function(clipPathObject) {
+        return BoundingBoxLayerBuilder.purifyContent(clipPathObject);
       }.bind(this))
     };
     var output = {
