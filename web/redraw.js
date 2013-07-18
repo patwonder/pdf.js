@@ -74,7 +74,7 @@ var obj;
             transparency: originalPrimitive.transparency
           }
         };
-        if (originalPrimitive.clipPathIndex)
+        if (typeof(originalPrimitive.clipPathIndex) !== "undefined")
           primitive.clipPathIndex = originalPrimitive.clipPathIndex;
         var fnArray = primitive.operatorList.fnArray;
         var argsArray = primitive.operatorList.argsArray;
