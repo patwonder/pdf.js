@@ -30,7 +30,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
     reset: function(state) {
       this.boundingBox = new BoundingBox(0, 0, 0, 0);
       this.outerBoundingBox = new BoundingBox(-1e11, -1e11, 2e11, 2e11);
-      this.isActive = false;
+      this.active = false;
       this.stateStack = [state];
       this.stackptr = 0;
       this.commandList = [];
@@ -51,14 +51,14 @@ var ObjectClipper = (function ObjectClipper_closure() {
         var aNewPt = Util.applyTransform([pt.x, pt.y], transform);
         pt = { x: aNewPt[0], y: aNewPt[1] };
       }
-      if (this.isActive) {
+      if (this.active) {
         this.boundingBox.extendPoint(pt);
       } else {
         this.boundingBox.left = pt.x;
         this.boundingBox.top = pt.y;
         this.boundingBox.width = 0;
         this.boundingBox.height = 0;
-        this.isActive = true;
+        this.active = true;
       }
     },
     
@@ -70,7 +70,7 @@ var ObjectClipper = (function ObjectClipper_closure() {
     clip: function() {
       this.outerBoundingBox = this.boundingBox;
       this.boundingBox = new BoundingBox(0, 0, 0, 0);
-      this.isActive = false;
+      this.active = false;
     },
     
     restrictBoundingBox: function() {
@@ -87,6 +87,31 @@ var ObjectClipper = (function ObjectClipper_closure() {
         this.stateStack.splice(0, 0, state);
       else
         this.stackptr--;
+    },
+    
+    completeCommandList: function() {
+      // append "restore" commands for each additional stack layer
+      while (this.stackptr) {
+        this.commandList.push({ name: "restore", args: [] });
+        this.stackptr--;
+      }
+      return this.commandList;
+    },
+    
+    hasCommands: function() {
+      return this.commandList.length !== 0;
+    },
+    
+    getBoundingBox: function() {
+      return this.boundingBox;
+    },
+    
+    getStateStack: function() {
+      return this.stateStack;
+    },
+    
+    isActive: function() {
+      return this.active;
     }
   };
   
@@ -813,12 +838,12 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     recordObject: function CanvasGraphics_recordObject(type, transparency) {
       var clipper = this.clipper;
       this.clipper.restrictBoundingBox();
-      if (type !== TermCommandType.CLIP_PATH && (!clipper.isActive ||
-        (clipper.boundingBox.width == 0 && clipper.boundingBox.height == 0))) {
+      if (type !== TermCommandType.CLIP_PATH && (!clipper.isActive() ||
+        (clipper.getBoundingBox().width == 0 && clipper.getBoundingBox().height == 0))) {
           return;
       }
       
-      var bb = clipper.boundingBox;
+      var bb = clipper.getBoundingBox();
       if (bb.width == 0) bb.width = 1;
       else if (bb.height == 0) bb.height = 1;
         
@@ -841,15 +866,15 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       }
       var content = {
         type: bbtype,
-        stateStack: clipper.stateStack,
-        commands: clipper.commandList,
+        stateStack: clipper.getStateStack(),
+        commands: clipper.completeCommandList(),
         transparency: transparency,
         clipPathObject: (type !== TermCommandType.CLIP_PATH) ? this.current.clipPathObject : null
       };
       if (this.depAnalyzer.dependency)
         content.dependency = this.depAnalyzer.dependency;
       if (type !== TermCommandType.CLIP_PATH)
-        bbLayer.appendBoundingBox(clipper.boundingBox, content);
+        bbLayer.appendBoundingBox(clipper.getBoundingBox(), content);
       else {
         // should add an "endPath" command to consume the clipping path
         content.commands.push({ name: "endPath", args: [] });
@@ -924,8 +949,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
         fnName = fnArray[i];
 
-        if (this.clipper && (this.clipper.commandList.length != 0 || !stateCommands[fnName])) {
-          if (this.clipper.commandList.length == 0) {
+        if (this.clipper && (this.clipper.hasCommands() || !stateCommands[fnName])) {
+          if (!this.clipper.hasCommands()) {
             this.clipper.reset(this.getFullContextState());
             this.depAnalyzer.reset();
           }
