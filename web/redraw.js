@@ -1,8 +1,11 @@
 "use strict";
 
+var obj;
+
 (function(d, w) {
   var E = d.getElementById.bind(d);
   w.addEventListener("DOMContentLoaded", function() {
+    obj = JSON.parse(Base64.gzipDecode(objEncoded));
     E("boundingBox").textContent = JSON.stringify(obj.boundingBox);
     E("viewport").textContent = JSON.stringify(obj.viewport);
     E("dependency").textContent = JSON.stringify(obj.dependency);
