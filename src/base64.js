@@ -6,38 +6,19 @@
 **/
  
 var Base64 = {
-  // private property
-  _keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
-
-  // public method for encoding
-  encode : function (input) {
+	// private property
+	_keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+ 
+	// public method for encoding
+	encode : function (input) {
     input = Base64._utf8_encode(input);
     return this._base64_encode(input);
   },
   
   // public method for decoding
-  decode : function (input) {
+	decode : function (input) {
     input = this._base64_decode(input);
     return Base64._utf8_decode(input);
-  },
-  
-  gzipEncode: function(input) {
-    input = Base64._utf8_encode(input);
-    var inputArr = [];
-    for (var i = 0, l = input.length; i < l; i++)
-      inputArr.push(input.charCodeAt(i));
-    var arr = gzip.zip(inputArr);
-    return this.encodeUint8Array(arr);
-  },
-  
-  gzipDecode: function(input) {
-    var arr = this.decodeUint8Array(input);
-    arr = gzip.unzip(arr);
-    var str = "";
-    for (var i = 0, l = arr.length; i < l; i++) {
-      str += String.fromCharCode(arr[i]);
-    }
-    return Base64._utf8_decode(str);
   },
   
   encodeUint8Array: function(arr) {

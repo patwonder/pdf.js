@@ -10,7 +10,7 @@
     <link rel="stylesheet" type="text/css" href="css/ui-lightness/jquery-ui-1.10.3.custom.min.css" />
     
     <script>
-      var objEncoded = <?php echo json_encode($_POST['json']); ?>;
+      var obj = JSON.parse(<?php echo json_encode($_POST['json']); ?>);
     </script>
     <script src="../src/network.js"></script>
     <script src="../src/chunked_stream.js"></script>
@@ -46,14 +46,6 @@
 
     <script src="jquery.min.js"></script>
     <script src="jquery-ui-1.10.3.custom.min.js"></script>
-
-<!--gzip-->
-    <script src="../src/gzip/rawinflate.js"></script>
-    <script src="../src/gzip/rawdeflate.js"></script>
-    <script src="../src/gzip/deflate.js"></script>
-    <script src="../src/gzip/crc32.js"></script>
-    <script src="../src/gzip/gzip.js"></script>
-
     <script src="redraw.js"></script>
   </head>
   <body>

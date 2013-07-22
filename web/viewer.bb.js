@@ -537,12 +537,8 @@ BoundingBoxLayerBuilder.prototype = {
       text: aTextContentConcat.join(""),
       graphics: aGraphicsContent
     };
-    var json = JSON.stringify(output);
-    var encoded = Base64.gzipEncode(json);
     var inputJSON = document.getElementById("redrawJSON");
-    inputJSON.value = encoded;
-    console.log("Compression ratio: " + Math.round(encoded.length * 10000 / json.length) / 100 + "% ("
-      + json.length + " bytes ==> " + encoded.length + " bytes)");
+    inputJSON.value = JSON.stringify(output);
     document.getElementById("redrawForm").submit();
   },
   
