@@ -49,6 +49,9 @@ var PDFImageData = (function PDFImageDataClosure() {
       return image.toIR(compress);
     else if (image instanceof HTMLImageElement)
       return ["HTMLImageElement", image.src];
+    else if (image.data && image.data.length && image.width && image.height) {
+      return PDFImageData.prototype.toIR.call(image, compress);
+    }
     return null;
   };
   

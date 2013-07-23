@@ -77,7 +77,8 @@
         var argsArray = primitive.operatorList.argsArray;
         for (var j = 0, ll = originalPrimitive.commands.length; j < ll; j++) {
           var command = originalPrimitive.commands[j];
-          if (command.name === "paintInlineImageXObject" || command.name === "paintInlineImageXObjectGroup") {
+          if (command.name === "paintInlineImageXObject" || command.name === "paintInlineImageXObjectGroup"
+              || command.name === "paintImageMaskXObject") {
             // Restore first argument from IR
             command = {
               name: command.name,
@@ -87,6 +88,19 @@
             command.args[0] = PDFImageData.fromIR(IR);
             if (command.args[0].promise) {
               promises.push(command.args[0].promise);
+            }
+          } else if (command.name === "paintImageMaskXObjectGroup") {
+            // Restore members of first argument with IR
+            command = {
+              name: command.name,
+              args: command.args.slice(0)
+            };
+            var args0 = command.args[0] = command.args[0].slice(0);
+            for (var i = 0, l = args0.length; i < l; i++) {
+              args0[i] = PDFImageData.fromIR(args0[i]);
+              if (args0[i].promise) {
+                promises.push(args0[i].promise);
+              }
             }
           }
           fnArray.push(command.name);

@@ -37,11 +37,19 @@ var ObjectClipper = (function ObjectClipper_closure() {
     },
     
     addCommand: function(command) {
-      if (command.name === "paintInlineImageXObject" || command.name === "paintInlineImageXObjectGroup") {
+      if (command.name === "paintInlineImageXObject" || command.name === "paintInlineImageXObjectGroup"
+          || command.name === "paintImageMaskXObject") {
         // Replace first argument with IR
         var imgData = command.args[0];
         command.args = command.args.slice(0);
-        command.args[0] = PDFImageData.toIR(imgData, true);
+        command.args[0] = PDFImageData.toIR(imgData, command.name !== "paintImageMaskXObject");
+      } else if (command.name === "paintImageMaskXObjectGroup") {
+        // Replace members of first argument with IR
+        command.args = command.args.slice(0);
+        var args0 = command.args[0] = command.args[0].slice(0);
+        for (var i = 0, l = args0.length; i < l; i++) {
+          args0[i] = PDFImageData.toIR(args0[i], false);
+        }
       }
       this.commandList.push(command);
     },
