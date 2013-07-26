@@ -988,6 +988,22 @@
       "link": true,
       "type": "eq"
     },
+    {  "id": "issue3062",
+      "file": "pdfs/issue3062.pdf",
+      "md5": "206715f1258f0e117df4180d98dd4d68",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
+      "type": "eq"
+    },
+    {  "id": "issue2442",
+      "file": "pdfs/issue2442.pdf",
+      "md5": "4656e36c44f44c71a499f02ce6c781d3",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
+      "type": "eq"
+    },
     {  "id": "issue2337",
       "file": "pdfs/issue2337.pdf",
       "md5": "ea10f4131202b9b8f2a6cb7770d3f185",
@@ -1011,6 +1027,13 @@
     {  "id": "annotation-as",
       "file": "pdfs/annotation-as.pdf",
       "md5": "e51500c8adc9edcdcc8ebc6a575c90ab",
+      "rounds": 1,
+      "link": true,
+      "type": "eq"
+    },
+    {  "id": "bug888437",
+      "file": "pdfs/bug888437.pdf",
+      "md5": "93370cd589a08732a05601441c899bcb",
       "rounds": 1,
       "link": true,
       "type": "eq"
@@ -1069,6 +1092,14 @@
       "file": "pdfs/noembed-identity.pdf",
       "md5": "05d3803b6c22451e18cb60d8d8c75c0c",
       "rounds": 1,
+      "type": "eq"
+    },
+    {  "id": "bug887152",
+      "file": "pdfs/bug887152.pdf",
+      "md5": "783a3e7b1de2cf40a47ffe1f36a41d4f",
+      "rounds": 1,
+      "lastPage": 1,
+      "link": true,
       "type": "eq"
     },
     {  "id": "bug816075",
@@ -1226,6 +1257,14 @@
       "file": "pdfs/bug766138.pdf",
       "md5": "b171f5cf8d9834348112fba60ee54f8c",
       "link": true,
+      "rounds": 1,
+      "type": "eq"
+    },
+    {  "id": "bug889327",
+      "file": "pdfs/bug889327.pdf",
+      "md5": "b45cd63419241c40731f98d0e1dac082",
+      "link": true,
+      "lastPage": 1,
       "rounds": 1,
       "type": "eq"
     },

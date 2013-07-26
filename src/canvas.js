@@ -1683,11 +1683,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         geom.canvasWidth = canvasWidth;
         geom.divHeight = divHeight;
         if (vertical) {
-          var vmetric = font.defaultVMetrics;
-          geom.x += vmetric[1] * fontSize * current.fontMatrix[0] /
-                    fontSizeScale * geom.hScale;
-          geom.y += vmetric[2] * fontSize * current.fontMatrix[0] /
-                    fontSizeScale * geom.vScale;
+          var VERTICAL_TEXT_ROTATION = Math.PI / 2;
+          geom.angle += VERTICAL_TEXT_ROTATION;
         }
         if (textSelection)
           this.textLayer.appendText(geom);
@@ -1763,12 +1760,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         geom.canvasWidth = canvasWidth;
         geom.divHeight = divHeight;
         if (vertical) {
-          var fontSizeScale = current.fontSizeScale;
-          var vmetric = font.defaultVMetrics;
-          geom.x += vmetric[1] * fontSize * current.fontMatrix[0] /
-                    fontSizeScale * geom.hScale;
-          geom.y += vmetric[2] * fontSize * current.fontMatrix[0] /
-                    fontSizeScale * geom.vScale;
+          var VERTICAL_TEXT_ROTATION = Math.PI / 2;
+          geom.angle += VERTICAL_TEXT_ROTATION;
         }
         if (textSelection)
           this.textLayer.appendText(geom);
