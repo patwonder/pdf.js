@@ -66,17 +66,39 @@ BoundingBox.prototype = {
     if (this.bottom > bb.bottom) {
       this.height -= this.bottom - bb.bottom;
     }
+  },
+  rotate: function(angle, origin) {
+    // calculate rotated positions of the four corners
+    // and create a new bounding box upon that
+    var sina = Math.sin(angle);
+    var cosa = Math.cos(angle);
+    var tl = { x: cosa * (this.left - origin.x) - sina * (this.top - origin.y) + origin.x,
+               y: sina * (this.left - origin.x) + cosa * (this.top - origin.y) + origin.y };
+    var tr = { x: cosa * (this.right - origin.x) - sina * (this.top - origin.y) + origin.x,
+               y: sina * (this.right - origin.x) + cosa * (this.top - origin.y) + origin.y };
+    var bl = { x: cosa * (this.left - origin.x) - sina * (this.bottom - origin.y) + origin.x,
+               y: sina * (this.left - origin.x) + cosa * (this.bottom - origin.y) + origin.y };
+    var br = { x: cosa * (this.right - origin.x) - sina * (this.bottom - origin.y) + origin.x,
+               y: sina * (this.right - origin.x) + cosa * (this.bottom - origin.y) + origin.y };
+    this.left = Math.min(tl.x, tr.x, bl.x, br.x);
+    this.width = Math.max(tl.x, tr.x, bl.x, br.x) - this.left;
+    this.top = Math.min(tl.y, tr.y, bl.y, br.y);
+    this.height = Math.max(tl.y, tr.y, bl.y, br.y) - this.top;
   }
 };
 
 BoundingBox.fromGeometry = function(geom) {
+  geom.angle = geom.angle || 0;
   var fontHeight = geom.fontSize * Math.abs(geom.vScale);
   var fontHeightDiff = Math.max(0, geom.divHeight - fontHeight);
-  return new BoundingBox(
-    /*left*/geom.x,
-    /*top*/geom.y - fontHeight,
+  var bb = new BoundingBox(
+    /*left*/geom.x + (fontHeight * Math.sin(geom.angle)),
+    /*top*/geom.y - (fontHeight * Math.cos(geom.angle)),
     /*width*/geom.canvasWidth * geom.hScale,
     /*height*/fontHeight + fontHeight * 0.382);
+  if (geom.angle)
+    bb.rotate(geom.angle, { x: bb.left, y: bb.top });
+  return bb;
 };
 
 BoundingBox.fromElement = function(element, bbLayerDiv) {
