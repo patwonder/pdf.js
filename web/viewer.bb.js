@@ -213,9 +213,6 @@ BoundingBoxLayerBuilder.prototype = {
 
     for (var i = 0, l = bbDivs.length; i < l; i++) {
       var bbDiv = bbDivs[i];
-      var content = this.bbContents[parseInt(bbDiv.dataset.contentIdx)];
-      if (content && content.type == BoundingBoxType.TEXT)
-        bbDiv.dataset.text = content.textContent;
       bbLayerFrag.appendChild(bbDiv);
     }
     
@@ -240,7 +237,6 @@ BoundingBoxLayerBuilder.prototype = {
       bb.restrict(this.canvasBB);
       var bbDiv = document.createElement("div");
       
-      bbDiv.dataset.pageIdx = this.pageIdx;
       bbDiv.dataset.contentIdx = this.bbContents.length;
       
       bbDiv.style.left = bb.left + "px";
@@ -563,8 +559,13 @@ BoundingBoxLayerBuilder.prototype = {
       graphics: aGraphicsContent
     };
     var inputJSON = document.getElementById("redrawJSON");
-    inputJSON.value = JSON.stringify(output);
-    document.getElementById("redrawForm").submit();
+    if (inputJSON) {
+      inputJSON.value = JSON.stringify(output);
+      document.getElementById("redrawForm").submit();
+    }
+    var event = document.createEvent("CustomEvent");
+    event.initCustomEvent("PDFViewerClip", true, true, JSON.stringify(output));
+    window.dispatchEvent(event);
   },
   
   doDetect: function() {
