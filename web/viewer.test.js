@@ -1,4 +1,4 @@
-"use strict"
+'use strict';
 
 var Test = (function() {
   var assertEquals = Utils.assertEquals;

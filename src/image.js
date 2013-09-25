@@ -19,7 +19,7 @@
 
 'use strict';
 
-var PDFImageData = (function PDFImageDataClosure() {
+var PDFImageData = PDFJS.PDFImageData = (function PDFImageDataClosure() {
   function PDFImageData(width, height, data) {
     this.width = width;
     this.height = height;

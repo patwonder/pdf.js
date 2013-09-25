@@ -2367,7 +2367,7 @@ function adjustWidths(properties) {
  *   var type1Font = new Font("MyFontName", binaryFile, propertiesObject);
  *   type1Font.bind();
  */
-var Font = (function FontClosure() {
+var Font = PDFJS.Font = (function FontClosure() {
   function Font(name, file, properties) {
     if (arguments.length === 1) {
       // importing translated data

@@ -1,6 +1,9 @@
-"use strict";
+'use strict';
 
 (function(d, w) {
+  // PDFJS objects
+  var { PDFObjects, CanvasGraphics, PDFImageData, Font, Util, Promise, PageViewport } = PDFJS;
+
   var E = d.getElementById.bind(d);
   w.addEventListener("DOMContentLoaded", function() {
     E("boundingBox").textContent = JSON.stringify(obj.boundingBox);

@@ -12,6 +12,7 @@
     <script>
       var obj = JSON.parse(<?php echo json_encode($_POST['json']); ?>);
     </script>
+<!--#if !PRODUCTION-->
     <script src="../src/network.js"></script>
     <script src="../src/chunked_stream.js"></script>
     <script src="../src/pdf_manager.js"></script>
@@ -43,6 +44,11 @@
     <script src="../src/jbig2.js"></script>
     <script src="../src/bidi.js"></script>
     <script>PDFJS.workerSrc = '../src/worker_loader.js';</script>
+<!--#endif-->
+
+<!--#if GENERIC || CHROME-->
+    <script src="../build/pdf.js"></script>
+<!--#endif-->
 
     <script src="jquery.min.js"></script>
     <script src="jquery-ui-1.10.3.custom.min.js"></script>

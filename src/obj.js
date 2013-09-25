@@ -1202,7 +1202,7 @@ var NameTree = (function NameTreeClosure() {
  * inside of a worker. The `PDFObjects` implements some basic functions to
  * manage these objects.
  */
-var PDFObjects = (function PDFObjectsClosure() {
+var PDFObjects = PDFJS.PDFObjects = (function PDFObjectsClosure() {
   function PDFObjects() {
     this.objs = {};
   }

@@ -21,6 +21,8 @@
 
 'use strict';
 
+//#include viewer.utils.js
+
 var DEFAULT_URL = 'compressed.tracemonkey-pldi-09.pdf';
 var DEFAULT_SCALE = 'auto';
 var DEFAULT_SCALE_DELTA = 1.1;
@@ -2902,3 +2904,6 @@ window.addEventListener('afterprint', function afterPrint(evt) {
 //  });
 //});
 //#endif
+
+//#include viewer.bb.js
+//#include viewer.test.js

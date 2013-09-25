@@ -1,4 +1,4 @@
-"use strict"
+'use strict';
 
 if(!('contains' in String.prototype))
   String.prototype.contains = function(str, startIndex) {

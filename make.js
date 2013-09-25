@@ -71,10 +71,14 @@ target.all = function() {
 // Files that need to be included in every build.
 var COMMON_WEB_FILES =
       ['web/images',
+       'web/css',
+       'web/jquery.min.js',
+       'web/jquery-ui-1.10.3.custom.min.js',
        'web/debugger.js'],
     COMMON_WEB_FILES_PREPROCESS =
       ['web/viewer.js',
-       'web/viewer.html'];
+       'web/viewer.html',
+       'web/redraw.php'];
 
 //
 // make generic
@@ -104,7 +108,9 @@ target.generic = function() {
       ['web/viewer.css', GENERIC_DIR + '/web'],
       ['web/compatibility.js', GENERIC_DIR + '/web'],
       ['web/compressed.tracemonkey-pldi-09.pdf', GENERIC_DIR + '/web'],
-      ['web/locale', GENERIC_DIR + '/web']
+      ['web/locale', GENERIC_DIR + '/web'],
+      ['web/redraw.css', GENERIC_DIR + '/web'],
+      ['web/redraw.js', GENERIC_DIR + '/web']
     ],
     preprocess: [
       [BUILD_TARGET, GENERIC_DIR + BUILD_TARGET],
@@ -233,7 +239,8 @@ target.bundle = function(args) {
   echo('### Bundling files into ' + BUILD_TARGET);
 
   var SRC_FILES =
-       ['network.js',
+       ['base64.js',
+        'network.js',
         'chunked_stream.js',
         'pdf_manager.js',
         'core.js',

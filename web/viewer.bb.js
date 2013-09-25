@@ -1,4 +1,4 @@
-"use strict"
+'use strict';
 
 var BoundingBoxType = {
   TEXT: 1,
@@ -457,6 +457,9 @@ BoundingBoxLayerBuilder.prototype = {
   },
   
   doClip: function() {
+    // PDFJS objects
+    var PDFImageData = PDFJS.PDFImageData;
+    
     var bbDivs = this.bbDivs;
     var bbContents = this.bbContents;
     var aTextContent = [];
