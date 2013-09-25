@@ -88,11 +88,18 @@ limitations under the License.
 <!--#endif-->
 
     <script type="text/javascript" src="debugger.js"></script>
-    <script type="text/javascript" src="json2xml.js"></script>
+
+<!--#if !PRODUCTION-->
     <script type="text/javascript" src="viewer.utils.js"></script>
+<!--#endif-->
+
     <script type="text/javascript" src="viewer.js"></script>
+
+<!--#if !PRODUCTION-->
     <script type="text/javascript" src="viewer.bb.js"></script>
     <script type="text/javascript" src="viewer.test.js"></script>
+<!--#endif-->
+
   </head>
 
   <body tabindex="1">

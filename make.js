@@ -74,11 +74,15 @@ var COMMON_WEB_FILES =
        'web/css',
        'web/jquery.min.js',
        'web/jquery-ui-1.10.3.custom.min.js',
-       'web/debugger.js'],
+       'web/debugger.js',
+       'web/redraw.js',
+       'web/redraw.css',
+       'web/viewer.embedded.css'],
     COMMON_WEB_FILES_PREPROCESS =
       ['web/viewer.js',
        'web/viewer.html',
-       'web/redraw.php'];
+       'web/redraw.php',
+       'web/viewer.embedded.js'];
 
 //
 // make generic
@@ -108,9 +112,8 @@ target.generic = function() {
       ['web/viewer.css', GENERIC_DIR + '/web'],
       ['web/compatibility.js', GENERIC_DIR + '/web'],
       ['web/compressed.tracemonkey-pldi-09.pdf', GENERIC_DIR + '/web'],
-      ['web/locale', GENERIC_DIR + '/web'],
-      ['web/redraw.css', GENERIC_DIR + '/web'],
-      ['web/redraw.js', GENERIC_DIR + '/web']
+      ['web/about_blank.pdf', GENERIC_DIR + '/web'],
+      ['web/locale', GENERIC_DIR + '/web']
     ],
     preprocess: [
       [BUILD_TARGET, GENERIC_DIR + BUILD_TARGET],
