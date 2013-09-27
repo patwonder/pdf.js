@@ -2227,7 +2227,7 @@ var DocumentOutlineView = function documentOutlineView(outline) {
   }
 };
 
-window.addEventListener('PDFViewerInit', function webViewerInit(evt) {
+window.addEventListener('PDFInit', function webViewerInit(evt) {
   PDFView.initialize();
   var params = PDFView.parseQueryString(document.location.search.substring(1));
 
@@ -2450,11 +2450,11 @@ window.addEventListener('PDFViewerInit', function webViewerInit(evt) {
   PDFView.open(file, 0);
 //#endif
   var event = document.createEvent("CustomEvent");
-  event.initCustomEvent("PDFViewerInitComplete", true, true, null);
+  event.initCustomEvent("PDFInitComplete", true, true, null);
   window.dispatchEvent(event);
 }, true);
 
-window.addEventListener("PDFViewerLoad", function webViewerLoad(evt) {
+window.addEventListener("PDFLoad", function webViewerLoad(evt) {
   PDFView.open(evt.detail, 0);
 }, true);
 
@@ -2524,7 +2524,7 @@ function updateViewarea() {
   PDFHistory.updateCurrentBookmark(pdfOpenParams, pageNumber);
 }
 
-window.addEventListener('PDFViewerResize', function webViewerResize(evt) {
+window.addEventListener('PDFControllerResize', function webViewerResize(evt) {
   if (PDFView.initialized &&
       (document.getElementById('pageWidthOption').selected ||
       document.getElementById('pageFitOption').selected ||
