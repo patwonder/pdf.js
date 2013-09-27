@@ -2387,6 +2387,7 @@ window.addEventListener('PDFInit', function webViewerInit(evt) {
 
   document.getElementById('openFile').addEventListener('click',
     function() {
+      document.getElementById('fileInput').value = "";
       document.getElementById('fileInput').click();
     });
 
