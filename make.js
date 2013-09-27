@@ -35,6 +35,7 @@ var ROOT_DIR = __dirname + '/', // absolute path to project's root
     LOCALE_SRC_DIR = 'l10n/',
     GH_PAGES_DIR = BUILD_DIR + 'gh-pages/',
     GENERIC_DIR = BUILD_DIR + 'generic/',
+    IDE_DIR = '../IDE/src/app/plugins/components/pdfclipperdialog/viewer.embedded/',
     REPO = 'git@github.com:mozilla/pdf.js.git',
     PYTHON_BIN = 'python2.7',
     MOZCENTRAL_PREF_PREFIX = 'pdfjs',
@@ -76,8 +77,7 @@ var COMMON_WEB_FILES =
        'web/jquery-ui-1.10.3.custom.min.js',
        'web/debugger.js',
        'web/redraw.js',
-       'web/redraw.css',
-       'web/viewer.embedded.css'],
+       'web/redraw.css'],
     COMMON_WEB_FILES_PREPROCESS =
       ['web/viewer.js',
        'web/viewer.html',
@@ -123,6 +123,24 @@ target.generic = function() {
   builder.build(setup);
 
   cleanupJSSource(GENERIC_DIR + '/web/viewer.js');
+};
+
+//
+// make generic
+// Builds the generic production viewer that should be compatible with most
+// modern HTML5 browsers.
+// Copy resultant build dir to IDE project.
+//
+target.generic_IDE = function() {
+  target.generic();
+
+  cd(ROOT_DIR);
+  echo();
+  echo('### Copying files to IDE project');
+
+  rm('-rf', IDE_DIR);
+  mkdir('-p', IDE_DIR);
+  cp('-R', GENERIC_DIR + '/*', IDE_DIR);
 };
 
 //
