@@ -120,6 +120,10 @@ function BoundingBoxLayerBuilder(bbLayerDiv, pageIdx, width, height, viewport, c
   this.viewport = viewport;
   this.commonObjs = commonObjs;
   this.objs = objs;
+  
+  // create local function copies for storing timer ids
+  this.doDetect = this.doDetect.bind(this);
+  this.renderLayer = this.renderLayer.bind(this);
 }
 
 BoundingBoxLayerBuilder.isBBVisible = function(bb) {
