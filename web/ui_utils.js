@@ -68,6 +68,9 @@ var CustomStyle = (function CustomStyleClosure() {
 })();
 
 function getFileName(url) {
+  if (/^data:(.*);base64,/.test(url))
+    return RegExp.$1;
+
   var anchor = url.indexOf('#');
   var query = url.indexOf('?');
   var end = Math.min(

@@ -68,6 +68,12 @@ PDFJS.getDocument = function getDocument(source,
           'string or a parameter object');
   }
 
+  // preprocess to convert data: URIs into array buffers
+  if (/^data:.*;base64,/.test(source.url)) {
+    source.data = Base64.decodeUint8Array(source.url);
+    source.url = undefined;
+  }
+
   if (!source.url && !source.data)
     error('Invalid parameter array, need either .data or .url');
 

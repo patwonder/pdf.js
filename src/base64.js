@@ -5,7 +5,7 @@
 *
 **/
  
-var Base64 = {
+var Base64 = PDFJS.Base64 = {
 	// private property
 	_keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
  
@@ -21,7 +21,7 @@ var Base64 = {
     return Base64._utf8_decode(input);
   },
   
-  encodeUint8Array: function(arr) {
+  encodeUint8Array: function(arr, mimetype) {
     var output = "";
     var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
     var i = 0;
@@ -48,10 +48,16 @@ var Base64 = {
       this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
     }
  
+    if (mimetype)
+      output = "data:" + mimetype + ";base64," + output;
+    
     return output;
   },
   
   decodeUint8Array: function(str) {
+    // preprocess to strip off base64 indicator
+    str = str.replace(/^data:.*;base64,/, "");
+
     var output = [];
     var chr1, chr2, chr3;
     var enc1, enc2, enc3, enc4;
