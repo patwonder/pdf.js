@@ -2,7 +2,13 @@
 
 (function(d, w) {
   // PDFJS objects
-  var { PDFObjects, CanvasGraphics, PDFImageData, Font, Util, Promise, PageViewport } = PDFJS;
+  var PDFObjects = PDFJS.PDFObjects;
+  var CanvasGraphics = PDFJS.CanvasGraphics;
+  var PDFImageData = PDFJS.PDFImageData;
+  var Font = PDFJS.Font;
+  var Util = PDFJS.Util;
+  var Promise = PDFJS.Promise;
+  var PageViewport = PDFJS.PageViewport;
 
   var E = d.getElementById.bind(d);
   w.addEventListener("DOMContentLoaded", function() {
