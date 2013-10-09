@@ -298,6 +298,9 @@ BoundingBoxLayerBuilder.prototype = {
         return;
       target = target.parentElement;
     }
+
+    // Prevent Chrome changing mouse icon to I-beam while dragging
+    event.preventDefault();
     
     var initialBB = null;
     if (Utils.matchesSelector(event.target, ".bbLayer > div:not(.bbLayerSelection)")) {
