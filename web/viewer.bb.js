@@ -54,16 +54,20 @@ BoundingBox.prototype = {
   restrict: function(bb) {
     if (this.left < bb.left) {
       this.width -= bb.left - this.left;
+      this.width = Math.max(0, this.width);
       this.left = bb.left;
     }
     if (this.top < bb.top) {
       this.height -= bb.top - this.top;
+      this.height = Math.max(0, this.height);
       this.top = bb.top;
     }
     if (this.right > bb.right) {
+      this.left = Math.min(bb.right, this.left);
       this.width -= this.right - bb.right;
     }
     if (this.bottom > bb.bottom) {
+      this.top = Math.min(bb.top, this.top);
       this.height -= this.bottom - bb.bottom;
     }
   },
@@ -283,6 +287,10 @@ BoundingBoxLayerBuilder.prototype = {
   
   // Selection event handling
   onMouseDown: function(event) {
+    // we're expecting left clicks only
+    if (event.button !== 0)
+      return;
+
     // do not process clicks on the clip button, etc
     var target = event.target;
     while (target != this.bbLayerDiv) {
@@ -315,6 +323,10 @@ BoundingBoxLayerBuilder.prototype = {
   },
   
   onMouseUp: function(event) {
+    // we're expecting left clicks only
+    if (event.button !== 0)
+      return;
+
     // do not handle when no event handler is bound
     if (!this._onMouseMoveBinded)
       return;
@@ -334,12 +346,19 @@ BoundingBoxLayerBuilder.prototype = {
   },
   
   onSelectionStart: function(pos, initialBB) {
+    // Single selection box
+    var lastBuilder = BoundingBoxLayerBuilder._lastBuilder;
+    if (lastBuilder && lastBuilder !== this)
+      lastBuilder.clearSelection();
+    BoundingBoxLayerBuilder._lastBuilder = this;
+
     var selectionBB = this.selectionBB = new BoundingBox(pos.left, pos.top, 1, 1);
     this.initialBB = initialBB || selectionBB.clone();
     selectionBB = this.initialBB;
     
     // Create the div for displaying the selection
-    var selectionDiv = this.selectionDiv || (this.selectionDiv = document.createElement("div"));
+    // Use a single div for all bounding box layers
+    var selectionDiv = this._selectionDiv || (this._selectionDiv = document.createElement("div"));
     selectionDiv.className = "bbLayerSelection";
     selectionDiv.style.left = selectionBB.left + "px";
     selectionDiv.style.top = selectionBB.top + "px";
@@ -376,7 +395,7 @@ BoundingBoxLayerBuilder.prototype = {
   
   onSelectionMove: function(pos) {
     var selectionBB = this.selectionBB;
-    var selectionDiv = this.selectionDiv;
+    var selectionDiv = this._selectionDiv;
 
     selectionBB.width = pos.left - selectionBB.left + 1;
     selectionBB.height = pos.top - selectionBB.top + 1;
@@ -391,6 +410,16 @@ BoundingBoxLayerBuilder.prototype = {
 
     this._lastSelectionAction = Date.now();
     this.setupDetectionTimer();
+  },
+
+  clearSelection: function() {
+    // restricts to 0, 0, 0, 0
+    this.selectionBB = this.initialBB = new BoundingBox(-1, -1, 1, 1);
+    this.setupDetectionTimer();
+    if (this._selectionDiv)
+      this._selectionDiv.style.visibility = "hidden";
+    if (this._clipButton)
+      this._clipButton.style.visibility = "hidden";
   },
   
   getSelectionBB: function() {
