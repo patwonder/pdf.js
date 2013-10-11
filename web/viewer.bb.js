@@ -361,7 +361,13 @@ BoundingBoxLayerBuilder.prototype = {
     
     // Create the div for displaying the selection
     // Use a single div for all bounding box layers
-    var selectionDiv = this._selectionDiv || (this._selectionDiv = document.createElement("div"));
+    var selectionDiv = this._selectionDiv || (this._selectionDiv = (function() {
+      var div = document.createElement("div");
+      div.addEventListener("PDFControllerClip", function() {
+        this.doClip();
+      }.bind(this));
+      return div;
+    }).call(this));
     selectionDiv.className = "bbLayerSelection";
     selectionDiv.style.left = selectionBB.left + "px";
     selectionDiv.style.top = selectionBB.top + "px";
@@ -376,6 +382,10 @@ BoundingBoxLayerBuilder.prototype = {
     
     this._lastSelectionAction = Date.now();
     this.setupDetectionTimer();
+
+    var event = document.createEvent("CustomEvent");
+    event.initCustomEvent("PDFViewerSelectionStart", true, true, null);
+    selectionDiv.dispatchEvent(event);
   },
   
   onSelectionEnd: function(pos) {
@@ -394,6 +404,10 @@ BoundingBoxLayerBuilder.prototype = {
     clipButton.style.left = tempBB.left + "px";
     clipButton.style.top = tempBB.top + "px";
     clipButton.style.visibility = this.isSelectionVisible() ? "visible" : "hidden";
+
+    var event = document.createEvent("CustomEvent");
+    event.initCustomEvent("PDFViewerSelectionEnd", true, true, this.isSelectionVisible() ? "visible" : "hidden");
+    this._selectionDiv.dispatchEvent(event);
   },
   
   onSelectionMove: function(pos) {
